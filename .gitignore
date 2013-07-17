@@ -1,0 +1,7 @@
+*.pyc
+*.log
+*.txt
+*.png
+tmp*
+NOTES
+TODO
