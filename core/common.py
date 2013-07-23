@@ -170,6 +170,17 @@ def processQueue(queue, qname, logger):
             return element.item
 
 # configuration
+class Struct(object):
+    def __init__(self, d):
+        for key, value in d.items():
+            if isinstance(value, (list, tuple)):
+               setattr(self, key, [Struct(item) if isinstance(item, dict) else item for item in value])
+            else:
+               setattr(self, key, Struct(value) if isinstance(value, dict) else value)
+    def __repr__(self):
+        return '{%s}' % str(', '.join('%s : %s' % (key, repr(value)) for (key, value) in self.__dict__.iteritems()))
+                           
+# configuration
 processor = Processor(GHz, GHz, None)
 memory = Memory(32 * GB, 10 * MBPS, None)
 battery = Battery(1000, 500, 10, 10)

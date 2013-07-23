@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import logging
-from cubenet.core.common import *
+from cloud.core.common import *
 
 class GroundStation(object):
     def __init__(self, name):

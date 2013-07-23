@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 
-import yaml
 from math import sqrt
 import networkx as nx
 from common import *
 import logging
-from cubenet.core.transceiver import Transceiver
+
+from cloud.core.transceiver import Transceiver
 
 class CubeSat(object):
     # initializaiton
@@ -75,7 +75,8 @@ class CubeSat(object):
 
     # GroundStation -> CubeSat comunication
     def uplinked(self, packet):
-        # receive packet from 
+        # receive packet from
+        pass
         
     # CubeSat -> GroundStation comunication
     def downlink(self, packet = None):

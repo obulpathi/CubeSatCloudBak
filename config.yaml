@@ -1,0 +1,25 @@
+# Configuration
+
+master:
+    processor:
+        speed: 1000000000
+        clock: 1000000000
+        power: 0
+        
+    memory:
+        size: 34359738368   # 32 GB
+        bandwidth: 10485760 # 10 MBPS
+        power: 0
+
+    nic:
+        speed: 100
+        latency: 0
+
+    transciever:
+        speed: 100
+
+    location:
+        x: 0
+        y: 0
+
+    tle: None

@@ -1,7 +1,7 @@
 import logging
 from math import ceil
 from random import randint
-from cubenet.core.common import *
+from cloud.core.common import *
 
 class Transceiver(object):
     def __init__(self, receiveHandler = None, other = None, logname = None, link = None):
