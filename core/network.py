@@ -99,7 +99,9 @@ class Network(object):
            
     def show(self):
         pyplot.show()
-
+    
+    def step(self):
+        pass
 
 import unittest
 import random

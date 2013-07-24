@@ -1,6 +1,38 @@
 # Configuration
 
+mission: Cloud
+network_size: 1
+
 master:
+    processor:
+        clock: 1000000000   # Hz
+        power: 0            # mW
+        
+    memory:
+        size: 34359738368   # 32 GB
+        bandwidth: 10485760 # 10 MBPS
+        power: 0
+        
+    battery:
+        capacity: 1000      # Coloumbs
+        charge: 1000        # Coloumbs
+        charge_rate: 10     # mA
+        max_current: 1000   # mA 
+    
+    nic:
+        bandwidth: 10       # mbps
+        latency: 0          # ms
+
+    transciever:
+        speed: 100
+
+    location:
+        x: 0
+        y: 0
+
+    tle: None
+
+slave:
     processor:
         speed: 1000000000
         clock: 1000000000
@@ -10,7 +42,12 @@ master:
         size: 34359738368   # 32 GB
         bandwidth: 10485760 # 10 MBPS
         power: 0
-
+        
+    battery:
+        capacity: 1000
+        charge_rate: 10
+    
+    
     nic:
         speed: 100
         latency: 0

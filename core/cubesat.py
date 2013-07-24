@@ -11,17 +11,13 @@ class CubeSat(object):
     # initializaiton
     def __init__(self, name, config):
         self.name = name
-        with open('config.yaml') as f:
-            config = yaml.load(f)
-
-        self.processor = config.processor
-        self.memory = config.memory
-        self.battery = config.battery
-        self.nic = config.nic
-        self.transciever = config.transciever
-        self.power = config.power
-        self.location = config.location
-        self.tle = config.tle
+        self.processor = Processor(config.processor)
+        self.memory = Memory(config.memory)
+        self.battery = Battery(config.battery)
+        self.nic = NIC(config.nic)
+        self.transciever = Transciever(config.transciever)
+        self.location = Location(config.location)
+        self.tle = TLE(config.tle)
         self.transceivers = {}
         self.GS2CSQueue = []
         self.CS2GSQueue = []
@@ -125,12 +121,12 @@ class CubeSat(object):
     def eps(self):
         battery = self.battery
         # charge from solar cells
-        if (battery.charge + battery.chargerate < battery.capacity):
-            battery.charge = battery.charge + battery.chargerate
+        if (battery.charge + battery.charge_rate < battery.capacity):
+            battery.charge = battery.charge + battery.charge_rate
         else:
             battery.charge = battery.capacity
         # discharge for maintaince
-        battery.charge = battery.charge - self.power.maintainance
+        # battery.charge = battery.charge - self.power.maintainance
     
     # modify this >>>
     # add tasks to the memory subsystem

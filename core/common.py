@@ -68,17 +68,7 @@ Torrent = namedtuple('Torrent', 'payload size chunks')
 MapReduce = namedtuple('MapReduce', 'payload size chunks')
 
 # subsystems
-"""
-Processor = namedtuple('Processor', 'MIPS clock tasks')
-NIC = namedtuple('NIC', 'bandwidth transmit_queues rxPacket')
-Memory = namedtuple('Memory', 'capacity diskspeed tasks')
-Transciever = namedtuple('Transciever', 'datarate tasks')
-Battery = namedtuple('Battery', 'capacity charge chargerate current_limit')
-"""
 Power = namedtuple('Power', 'processor memory nic transciever eps maintainance')
-"""
-Location = namedtuple('Location', 'x y')
-"""
 
 class Chunk(object):
     def __init__(self, id, size, slave):
@@ -101,7 +91,9 @@ class Packet(object):
         self.flags = flags
         
     def __repr__(self):
-        return "Sender: " + str(self.sender.name) + ", Receiver: " + str(self.receiver.name) + ", Source: " + str(self.source.name) + ", Destination: " + str(self.destination.name) + ", Datatype: " + str(self.datatype) + ", ID: " + str(self.id) + ", Payload: " + str(self.payload) + ", Size: " + str(self.size)
+        return "Sender: " + str(self.sender.name) + ", Receiver: " + str(self.receiver.name) + ", Source: " + \
+                str(self.source.name) + ", Destination: " + str(self.destination.name) + ", Datatype: " + \
+                str(self.datatype) + ", ID: " + str(self.id) + ", Payload: " + str(self.payload) + ", Size: " + str(self.size)
 
 class LLPacket(object):
     def __init__(self, id, size, payload, flags = 0x00):
@@ -114,44 +106,42 @@ class LLPacket(object):
         return "ID: " + str(self.id) + ", Size: " + str(self.size) + ", Payload: " + str(self.payload) + ", Flags: " + str(self.flags)
 
 class Processor(object):
-	def __init__(self, MIPS, clock, tasks):
-		self.MIPS = MIPS
-		self.clock = clock
-		self.tasks = tasks
+	def __init__(self, config):
+		self.clock = config.clock
+		self.power = config.power
+		self.tasks = []
 
 class NIC(object):
-	def __init__(self, bandwidth, transmit_queues, rxPacket):
-		self.bandwidth = bandwidth
-		self.transmit_queues = transmit_queues
-		self.rxPacket = rxPacket
+	def __init__(self, config):
+		self.bandwidth = config.bandwidth
+		self.transmit_queues = []
+		self.rxPacket = []
 
 class Memory(object):
-	def __init__(self, capacity, diskspeed, tasks):
-		self.capacity = capacity
-		self.diskspeed = diskspeed
-		self.tasks = tasks
+	def __init__(self, config):
+		self.size = config.size
+		self.bandwidth = config.bandwidth
+		self.tasks = []
 
 class Transciever(object):
-	def __init__(self, datarate, tasks):
+	def __init__(self, config):
 		pass
 
 class Battery(object):
-	def __init__(self, capacity, charge, chargerate, current_limit):
-		self.capacity = capacity
-		self.charge = charge
-		self.chargerate = chargerate
-		self.current_limit = current_limit
-
-"""
-class Power(object):
-	def __init__(self, processor, memory, nic, transciever, eps):
-		pass
-"""
+	def __init__(self, config):
+		self.capacity = config.capacity
+		self.charge = config.charge
+		self.charge_rate = config.charge_rate
+		self.max_current = config.max_current
 
 class Location(object):
-	def __init__(self, x, y):
+	def __init__(self, config):
 		pass
 
+class TLE(object):
+	def __init__(self, config):
+		pass
+		
 # Queue constructs
 class QItem(object):
     def __init__(self, item, timer):
@@ -179,16 +169,3 @@ class Struct(object):
                setattr(self, key, Struct(value) if isinstance(value, dict) else value)
     def __repr__(self):
         return '{%s}' % str(', '.join('%s : %s' % (key, repr(value)) for (key, value) in self.__dict__.iteritems()))
-                           
-# configuration
-processor = Processor(GHz, GHz, None)
-memory = Memory(32 * GB, 10 * MBPS, None)
-battery = Battery(1000, 500, 10, 10)
-nic = NIC(100, None, None)
-transciever = Transciever(100, None)
-power = Power(10, 10, 10, 10, 10, 5)
-location = Location(0, 0)
-tle = None
-
-master_configuration = Configuration(processor, memory, battery, nic, transciever, power, location, tle)
-slave_configuration = Configuration(processor, memory, battery, nic, transciever, power, location, tle)
