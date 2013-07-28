@@ -69,3 +69,6 @@ class Slave(CubeSat):
         # if battery is critically low, go into sleep mode
         if (self.battery.charge < BATTERY_LOW):
             sleep()
+    
+    def run(self):
+        print(self)

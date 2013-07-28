@@ -4,12 +4,14 @@ from math import sqrt
 import networkx as nx
 from common import *
 import logging
+import threading
 
 from cloud.core.transceiver import Transceiver
 
-class CubeSat(object):
+class CubeSat(threading.Thread):
     # initializaiton
     def __init__(self, name, config):
+        threading.Thread.__init__(self)
         self.name = name
         self.processor = Processor(config.processor)
         self.memory = Memory(config.memory)
@@ -166,11 +168,7 @@ class CubeSat(object):
         # give sleep indicator to neighbouring nodes
         # set wakeup timer and goto sleep
         pass
-        
-    # do a unit of work
-    def step(self):
-        pass
-
-if __name__ == "__main__":
-    print("========= TESTING =========")
-    
+	
+	# thread run process
+	def run(self):
+		pass

@@ -16,23 +16,29 @@ class Simulator(object):
         # form the network
         self.network = Network(self.master, self.slaves, self.server, self.groundstations)
     
-    def start():
+    def start(self):
         # set upt het network
-        network.bootstrap()
-        nework.set_up_routes()
+        # self.network.bootstrap()
+        # self.network.set_up_routes()
+        # start individual components
+        self.master.start()
+        for slave in self.slaves:
+            slave.start()
+        self.server.start()
+        for groundstation in self.groundstations:
+            groundstation.start()
+        self.network.start()
     
-    def simulate(self):
-        # start the modules
-        while True:
-            self.server.step()
-            for groundstation in self.groundstations:
-                groundstation.step()
-            self.master.step()
-            for slave in self.slaves:
-                slave.step()
-            self.network.step()
-            # check for exit conditions
-
+    def finish(self):
+        # wait for all threads to finish
+        self.master.join()
+        for slave in self.slaves:
+            slave.join()
+        self.server.join()
+        for groundstation in self.groundstations:
+            groundstation.join()
+        self.network.join()
+        
 if __name__ == "__main__":
     import yaml
     from cloud.core.common import Struct
@@ -44,4 +50,5 @@ if __name__ == "__main__":
     config = Struct(configDict)
     # create simulator
     mysimulator = Simulator(config)
-    mysimulator.simulate()
+    mysimulator.start()
+    mysimulator.finish()

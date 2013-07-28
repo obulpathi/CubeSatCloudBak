@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
+import logging
+import threading
+
 from groundstation import GroundStation
 from common import *
-import logging
 
-class Server(GroundStation):
+class Server(threading.Thread):
     def __init__(self, name):
+        threading.Thread.__init__(self)
         self.name = name
         self.master = None
         self.relay_groundstation = None

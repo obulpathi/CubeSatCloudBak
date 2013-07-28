@@ -10,7 +10,6 @@ class Master(CubeSat):
         self.status = STARTING
         self.slaves = []
         self.job = None
-        self.chunks = []
         self.slave_table = {}
         self.logger = logging.getLogger("Master")
         

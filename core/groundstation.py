@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
 import logging
-from cloud.core.common import *
+import threading
 
-class GroundStation(object):
+from cloud.core.common import *
+ 
+
+class GroundStation(threading.Thread):
     def __init__(self, name):
+        threading.Thread.__init__(self)
         self.name = name
         self.cubesat = None
         self.logger = logging.getLogger("GroundStation")

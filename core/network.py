@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
+import threading
 import networkx as nx
 from cloud.core.common import *
 from cloud.core.topology import *
 from cloud.core.transceiver import Transceiver
 from matplotlib import pyplot
 
-class Network(object):
+class Network(threading.Thread):
     def __init__(self, master, slaves, server, groundstations):
+        threading.Thread.__init__(self)
         self.graph = nx.Graph()
         self.master = master
         self.slaves = slaves
@@ -87,9 +89,6 @@ class Network(object):
     def nextHop(self, source, destination):
         route = nx.shortest_path(self.graph, source, destination)
         return route[1]
-        
-    def start(self):
-        pass
     
     def draw(self):
         nx.draw(self.graph)
@@ -102,6 +101,9 @@ class Network(object):
     
     def step(self):
         pass
+
+    def run(self):
+        print("Network")
 
 import unittest
 import random
