@@ -21,6 +21,8 @@ class Simulator(object):
         # self.network.bootstrap()
         # self.network.set_up_routes()
         # start individual components
+        filename = self.master.sense()
+        self.master.createChunks(filename)
         self.master.start()
         for slave in self.slaves:
             slave.start()
@@ -29,7 +31,7 @@ class Simulator(object):
             groundstation.start()
         self.network.start()
     
-    def finish(self):
+    def stop(self):
         # wait for all threads to finish
         self.master.join()
         for slave in self.slaves:
@@ -51,4 +53,4 @@ if __name__ == "__main__":
     # create simulator
     mysimulator = Simulator(config)
     mysimulator.start()
-    mysimulator.finish()
+    mysimulator.stop()

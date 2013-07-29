@@ -1,3 +1,5 @@
+import math
+import Image
 import logging
 import random
 
@@ -33,7 +35,22 @@ class Master(CubeSat):
         # initalize slave table
         for slave in self.slaves:
             self.slave_table[slave] = IDLE
-            
+    
+    # simulate sensing and return filename containing the remote sensing data
+    def sense(self):
+        return "image.jpg"
+    
+    # split the remote sensing data into chunks
+    def createChunks(self, filename):
+        sensor_data = Image.open(filename)
+        width = sensor_data.size[0]
+        height = sensor_data.size[1]
+        for y in range(0, int(math.ceil(float(height)/chunk_y))):
+            for x in range(0, int(math.ceil(float(width)/chunk_x))):
+                box = (x * chunk_x, y * chunk_y, (x+1) * chunk_x, (y+1) * chunk_y)
+                chunk = sensor_data.crop(box)
+                chunk.save("chunks/chunk:" + str(y) + "x" + str(x) + ".jpg")
+                    
     def addJob(self, job):
         self.job = job
         self.status = WORKING
