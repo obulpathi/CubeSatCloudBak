@@ -47,6 +47,9 @@ FINISHED = "FINISHED"
 TRANSMIT = "TRANSMIT"
 RECEIVE  = "RECEIVE"
 
+# chunk states
+UNASSINGED = "UNASSIGNED"
+
 # battery
 BATTERY_LOW = 100
 
@@ -75,12 +78,17 @@ MapReduce = namedtuple('MapReduce', 'payload size chunks')
 Power = namedtuple('Power', 'processor memory nic transciever eps maintainance')
 
 class Chunk(object):
-    def __init__(self, id, size, slave):
-        self.id = id
+    def __init__(self, chunkid, filename, size, box, slave = None):
+        self.chunkid = chunkid
+        self.filename = filename
         self.size = size
+        self.box = box
         self.slave = slave
+        self.status = "UNASSIGNED"
+        
     def __repr__(self):
-        return "ID: " + str(self.id) + ", Size: " + str(self.size) + ", Slave: " + str(self.slave)
+        return "ID: " + str(self.chunkid) + ", Filename: " + self.filename + ", Size: " + str(self.size) + \
+               ", Slave: " + str(self.slave) + ", Status: " + self.status
         
 class Packet(object):
     def __init__(self, sender, receiver, source, destination, datatype, id, payload, size, flags = None):

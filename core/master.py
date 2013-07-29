@@ -1,7 +1,9 @@
+import os
 import math
 import Image
 import logging
 import random
+import uuid
 
 from cloud.core.cubesat import CubeSat
 from cloud.core.common import *
@@ -11,6 +13,7 @@ class Master(CubeSat):
         super(Master, self).__init__(name, config)
         self.status = STARTING
         self.slaves = []
+        self.chunks = []
         self.job = None
         self.slave_table = {}
         self.logger = logging.getLogger("Master")
@@ -53,7 +56,12 @@ class Master(CubeSat):
                 bottom = min((y+1) * chunk_y, height)
                 box = (left, top, right, bottom)
                 chunk = sensor_data.crop(box)
-                chunk.save("chunks/chunk:" + str(y) + "x" + str(x) + ".jpg")
+                filename = "chunks/chunk:" + str(y) + "x" + str(x) + ".jpg"
+                chunk.save(filename)
+                chunkid = str(uuid.uuid4())
+                size = os.stat(filename).st_size
+                self.chunks.append(Chunk(chunkid, filename, size, box))
+                print self.chunks[-1]
                     
     def addJob(self, job):
         self.job = job
