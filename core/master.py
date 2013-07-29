@@ -47,7 +47,11 @@ class Master(CubeSat):
         height = sensor_data.size[1]
         for y in range(0, int(math.ceil(float(height)/chunk_y))):
             for x in range(0, int(math.ceil(float(width)/chunk_x))):
-                box = (x * chunk_x, y * chunk_y, (x+1) * chunk_x, (y+1) * chunk_y)
+                left = x * chunk_x
+                top = y * chunk_y
+                right = min((x+1) * chunk_x, width)
+                bottom = min((y+1) * chunk_y, height)
+                box = (left, top, right, bottom)
                 chunk = sensor_data.crop(box)
                 chunk.save("chunks/chunk:" + str(y) + "x" + str(x) + ".jpg")
                     
