@@ -8,10 +8,11 @@ from cloud.core.common import *
 
 class TransportClientProtocol(protocol.Protocol):
     def connectionMade(self):
-        print("connection made")
-        self.register()
-        
-    def dataReceived(self, data):
+        global client
+        client = self
+        print("client connection made")
+    
+    def dataReceived(self, packet):
         if data == "REGISTERED":
             self.registered()
         elif data == "CHUNK":
@@ -36,7 +37,7 @@ class TransportClientProtocol(protocol.Protocol):
     
     def receiveChunk(self):
         pass
-        
+            
 class TransportClientFactory(protocol.ClientFactory):
     def buildProtocol(self, addr):
         return TransportClientProtocol()
@@ -46,8 +47,3 @@ class TransportClientFactory(protocol.ClientFactory):
     def clientConnectionLost(self, connector, reason):
         print "Connection lost."
         reactor.stop()
-
-if __name__ == "__main__":
-    client = TransportClient()
-    twistedThread = Thread(target=reactor.run, args = (False,));
-    twistedThread.start()

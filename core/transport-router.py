@@ -3,6 +3,11 @@ from twisted.internet import reactor
 from twisted.internet import protocol
 
 class TransportRouterProtocol(protocol.Protocol):
+    def connectionMade(self):
+        global router
+        router = self
+        print("router connection made")
+                
     def dataReceived(self, data):
         print("got data")
         if data == "REGISTER":

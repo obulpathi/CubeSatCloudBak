@@ -53,7 +53,7 @@ class TransportServerFactory(protocol.Factory):
     def buildProtocol(self, addr):
         return TransportServerProtocol()
 
-# run master
+# run server
 if __name__ == "__main__":
     reactor.listenTCP(8000, TransportServerFactory())
     print("Master is up and running")
