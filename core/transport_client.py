@@ -1,10 +1,14 @@
+import pickle
 import threading
+from threading import Thread
 from twisted.internet import reactor
 from twisted.internet import protocol
-from threading import Thread
+
+from cloud.core.common import *
 
 class TransportClientProtocol(protocol.Protocol):
     def connectionMade(self):
+        print("connection made")
         self.register()
         
     def dataReceived(self, data):
@@ -16,11 +20,14 @@ class TransportClientProtocol(protocol.Protocol):
             print "Server said:", data
     
     def register(self):
-        self.transport.write("REGISTER")
+        print("registering")
+        packet = Packet("sender", "receiver", "source", "destination", REGISTER, None, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.transport.write(packetstring)
     
     def registered(self):
-        pass
-    
+        self.status = IDLE
+        
     def deregister(self):
         self.transport.loseConnection()
         
@@ -39,14 +46,6 @@ class TransportClientFactory(protocol.ClientFactory):
     def clientConnectionLost(self, connector, reason):
         print "Connection lost."
         reactor.stop()
-
-class TransportClient(threading.Thread):
-    def __init__(self):
-        reactor.connectTCP("localhost", 8000, TransportClientFactory())
-        threading.Thread.__init__(self)
-        
-    def run(self):
-        pass
 
 if __name__ == "__main__":
     client = TransportClient()

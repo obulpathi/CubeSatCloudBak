@@ -1,36 +1,28 @@
+import pickle
 import threading
 from twisted.internet import reactor
 from twisted.internet import protocol
 
+from cloud.core.common import *
+
 class TransportServerProtocol(protocol.Protocol):
-    def dataReceived(self, data):
-        if data == "REGISTER":
-            self.registerSlave();
-        elif data == "GET_CHUNK":
-            self.sendChunk()
+    def dataReceived(self, packetstring):
+        print("got data %s" % packetstring)
+        packet = pickle.loads(packetstring)
+        if packet.flags & REGISTER:
+            self.registerSlave(packet)
+        elif packet.flags & GET_CHUNK:
+            self.sendChunk(packet)
         else:
             log("Unknown stuff")
     
-    def registerSlave(self):
+    def registerSlave(self, packet):
+        print("registering slave")
         self.transport.write("REGISTERED")
         
-    def transmitChunk(self):
+    def transmitChunk(self, packet):
         self.transport.write(chunk)
     
 class TransportServerFactory(protocol.Factory):
     def buildProtocol(self, addr):
         return TransportServerProtocol()
-
-class TransportServer(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        
-    def run(self):
-        reactor.listenTCP(8000, TransportServerFactory())
-
-    def transmit(self, data):
-        pass
-        
-if __name__ == "__main__":
-    transport_server = TransportServer()
-    twistedThread = Thread(target=reactor.run, args = (False,));

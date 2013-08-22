@@ -90,23 +90,26 @@ class Chunk(object):
     def __repr__(self):
         return "ID: " + str(self.chunkid) + ", Filename: " + self.filename + ", Size: " + str(self.size) + \
                ", Slave: " + str(self.slave) + ", Status: " + self.status
-        
+
+# Packet flags
+REGISTER = 0x01
+HEADERS_SIZE = 22
+
+# Packet definition
 class Packet(object):
-    def __init__(self, sender, receiver, source, destination, datatype, id, payload, size, flags = None):
+    def __init__(self, sender, receiver, source, destination, flags, payload, size):
         self.sender = sender
         self.receiver = receiver
         self.source = source
         self.destination = destination
-        self.datatype = datatype
-        self.id = id
         self.payload = payload
         self.size = size
         self.flags = flags
         
     def __repr__(self):
-        return "Sender: " + str(self.sender.name) + ", Receiver: " + str(self.receiver.name) + ", Source: " + \
-                str(self.source.name) + ", Destination: " + str(self.destination.name) + ", Datatype: " + \
-                str(self.datatype) + ", ID: " + str(self.id) + ", Payload: " + str(self.payload) + ", Size: " + str(self.size)
+        return "Sender: " + str(self.sender) + ", Receiver: " + str(self.receiver) + ", Source: " + \
+                str(self.source) + ", Destination: " + str(self.destination) + ", Payload: " + \
+                str(self.payload) + ", Size: " + str(self.size)
 
 class LLPacket(object):
     def __init__(self, id, size, payload, flags = 0x00):
