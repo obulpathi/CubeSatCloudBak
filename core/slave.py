@@ -12,6 +12,11 @@ class Slave(CubeSat):
     
     def setMaster(self, master):
         self.master = master
+
+    # start CubeSat Client
+    def startCubeSatClient(self):
+        reactor.connectTCP("localhost", 8000, CubeSatClientFactory())
+        reactor.run()
         
     # process the chunks assigned by master
     def process(self):
@@ -70,5 +75,6 @@ class Slave(CubeSat):
         if (self.battery.charge < BATTERY_LOW):
             sleep()
     
+    # run
     def run(self):
         print(self)

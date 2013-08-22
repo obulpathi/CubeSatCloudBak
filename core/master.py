@@ -4,6 +4,7 @@ import Image
 import logging
 import random
 import uuid
+from twisted.internet import reactor
 
 from cloud.core.cubesat import CubeSat
 from cloud.core.common import *
@@ -33,6 +34,11 @@ class Master(CubeSat):
     def getRelayGroundstation(self):
         return self.relay_groundstation
     
+    # start CubeSat Server
+    def startCubeSatServer(self):
+        reactor.listenTCP(8000, CubeSatServerFactory())
+        reactor.run()
+        
     def init(self, graph, nodes):
         super(Master, self).init(graph, nodes)
         # initalize slave table

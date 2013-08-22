@@ -53,4 +53,7 @@ if __name__ == "__main__":
     # create simulator
     mysimulator = Simulator(config)
     mysimulator.start()
+    # create mission for cubesat cluster
+    mission = Mission('CDFS')
+    server.addJob(mission)
     mysimulator.stop()

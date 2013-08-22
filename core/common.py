@@ -70,7 +70,8 @@ Task = namedtuple('Task', 'ID flops')
 Fileops = namedtuple('Fileops', 'ID filename mode data')
 Configuration = namedtuple('Configuration', 'processor memory battery nic transciever power location tle')
 
-# mission commands
+# missions
+Mission = namedtuple('Mission', 'mission')
 Torrent = namedtuple('Torrent', 'payload size chunks')
 MapReduce = namedtuple('MapReduce', 'payload size chunks')
 
