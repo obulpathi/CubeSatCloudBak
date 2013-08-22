@@ -1,6 +1,9 @@
 from twisted.internet import reactor
 from twisted.internet import protocol
 
+from cloud.core.transport-client import *
+from cloud.core.transport-router import *
+
 # Worker class
 class Worker(object):
     # save the chunk

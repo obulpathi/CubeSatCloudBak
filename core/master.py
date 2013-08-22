@@ -2,6 +2,7 @@ from twisted.internet import reactor
 from twisted.internet import protocol
 
 from cloud.core.common import *
+from cloud.core.transport-server import *
 
 class TransportServerProtocol(protocol.Protocol):
     # simulate sensing and return filename containing the remote sensing data
