@@ -23,9 +23,12 @@ class Worker(object):
 # run the worker and twisted reactor
 if __name__ == "__main__":
     fromRouterToClient = Queue()
+    fromClientToRouter = Queue()
+    
     route_table = {}
     # start client and router
-    reactor.connectTCP("localhost", 8008, TransportClientFactory(fromRouterToClient))
-    reactor.listenTCP(8016, TransportRouterFactory(fromRouterToClient))
+    reactor.connectTCP("localhost", 8008, TransportClientFactory(fromClientToRouter, fromRouterToClient))
+    reactor.listenTCP(8016, TransportRouterFactory(fromClientToRouter, fromRouterToClient))
+    
     print("Client and Router are up and running")
     reactor.run()

@@ -15,7 +15,7 @@ class TransportClientProtocol(protocol.Protocol):
 
     def pollForDataFromRouter(self):
         try:
-            data = self.factory.fromRouter.get(False)
+            data = self.factory.fromRouterToClient.get(False)
             if data:
                 self.transport.write(data)
         except Exception:
@@ -27,6 +27,7 @@ class TransportClientProtocol(protocol.Protocol):
     
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
+        print("data received")
         if self.id and packet.destination != self.id:
             self.forwardToChild(packet)
         elif packet.flags & REGISTERED:
@@ -50,12 +51,11 @@ class TransportClientProtocol(protocol.Protocol):
     def deregister(self):
         self.transport.loseConnection()
     
-    """
     def forwardToMaster(self, packet):
         self.transport.write(packetstring)
-    """
+    
     def forwardToChild(self, packet):
-        pass
+        self.factory.fromClientToRouter.put(packet)
         
     def requestChunk(self):
         self.transport.write("GET_CHUNK")
@@ -64,8 +64,9 @@ class TransportClientProtocol(protocol.Protocol):
         pass
             
 class TransportClientFactory(protocol.ClientFactory):
-    def __init__(self, fromRouter):
-        self.fromRouter = fromRouter
+    def __init__(self, fromClientToRouter, fromRouterToClient):
+        self.fromClientToRouter = fromClientToRouter
+        self.fromRouterToClient = fromRouterToClient
     def buildProtocol(self, addr):
         return TransportClientProtocol(self)
     def clientConnectionFailed(self, connector, reason):
