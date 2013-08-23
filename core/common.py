@@ -92,7 +92,9 @@ class Chunk(object):
                ", Slave: " + str(self.slave) + ", Status: " + self.status
 
 # Packet flags
-REGISTER = 0x01
+REGISTER = 0x0001
+REGISTERED = 0x0002
+# packet constants
 HEADERS_SIZE = 22
 
 # Packet definition
