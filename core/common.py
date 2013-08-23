@@ -79,21 +79,22 @@ MapReduce = namedtuple('MapReduce', 'payload size chunks')
 Power = namedtuple('Power', 'processor memory nic transciever eps maintainance')
 
 class Chunk(object):
-    def __init__(self, chunkid, filename, size, box, slave = None):
+    def __init__(self, chunkid, size, box, data):
         self.chunkid = chunkid
-        self.filename = filename
         self.size = size
         self.box = box
-        self.slave = slave
-        self.status = "UNASSIGNED"
+        self.data = data
         
     def __repr__(self):
-        return "ID: " + str(self.chunkid) + ", Filename: " + self.filename + ", Size: " + str(self.size) + \
-               ", Slave: " + str(self.slave) + ", Status: " + self.status
+        return "ID: " + str(self.chunkid) + ", Size: " + str(self.size) + \
+               ", Box: " + str(self.box) + ", Data: DATA"
 
 # Packet flags
-REGISTER = 0x0001
-REGISTERED = 0x0002
+NO_FLAGS    = 0x0000
+REGISTER    = 0x0001
+REGISTERED  = 0x0002
+GET_CHUNK   = 0x0004
+CHUNK       = 0x0008
 # packet constants
 HEADERS_SIZE = 22
 

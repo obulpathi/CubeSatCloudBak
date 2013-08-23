@@ -15,7 +15,7 @@ class TransportServerProtocol(protocol.Protocol):
         if packet.flags & REGISTER:
             self.registerSlave(packet)
         elif packet.flags & GET_CHUNK:
-            self.sendChunk(packet)
+            self.transmitChunk(packet.source)
         else:
             log("Unknown stuff")
     
@@ -29,8 +29,15 @@ class TransportServerProtocol(protocol.Protocol):
         self.transport.write(packetstring)
     
     # transmit chunk
-    def transmitChunk(self, packet):
-        self.transport.write(chunk)
+    def transmitChunk(self, destination):
+        print("Master got request for chunk")
+        image = open("chunk.jpg", "rb")
+        data = image.read()
+        chunk = Chunk("chunkid", "size", "box", data)
+        packet = Packet(self.factory.id, "receiver", self.factory.id, destination, CHUNK, \
+                        chunk, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.transport.write(packetstring)
 
 # Server factory
 class TransportServerFactory(protocol.Factory):

@@ -29,11 +29,14 @@ class TransportClientProtocol(protocol.Protocol):
         packet = pickle.loads(packetstring)
         print("data received")
         if self.id and packet.destination != self.id:
+            print(packet.destination)
+            print(self.id)
+            print("forwarding data to child")
             self.forwardToChild(packet)
         elif packet.flags & REGISTERED:
             self.registered(packet)
         elif packet.flags & CHUNK:
-            self.receivedChunk()
+            self.receivedChunk(packet)
         else:
             print "Server said:", packetstring
     
@@ -47,6 +50,7 @@ class TransportClientProtocol(protocol.Protocol):
         print("Whoa!!!!!")
         self.id = packet.payload
         self.status = IDLE
+        self.requestChunk()
         
     def deregister(self):
         self.transport.loseConnection()
@@ -58,10 +62,17 @@ class TransportClientProtocol(protocol.Protocol):
         self.factory.fromClientToRouter.put(packet)
         
     def requestChunk(self):
-        self.transport.write("GET_CHUNK")
+        print("requesting chunk")
+        packet = Packet(self.id, "receiver", self.id, "destination", GET_CHUNK, None, HEADERS_SIZE)
+        data = pickle.dumps(packet)
+        self.transport.write(data)
     
-    def receiveChunk(self):
-        pass
+    def receivedChunk(self, packet):
+        print("Chunk received")
+        chunk = open("chunk1.jpg", "wb")
+        chunk.write(packet.payload.data)
+        chunk.close()
+
             
 class TransportClientFactory(protocol.ClientFactory):
     def __init__(self, fromClientToRouter, fromRouterToClient):
