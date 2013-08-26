@@ -9,17 +9,19 @@ from cloud.core.common import *
 class TransportCSClientProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
-        loopcall = task.LoopingCall(self.pollForDataFromGSServer)
-        loopcall.start(0.1) # call every second
+        #loopcall = task.LoopingCall(self.pollForDataFromWorker)
+        #loopcall.start(0.1) # call every second
 
-    def pollForDataFromGSServer(self):
+    def pollForDataFromWorker(self):
+        print("in loopcall")
         try:
-            data = self.factory.fromGSServerToCSClient.get(False)
+            data = self.factory.fromMasterToCSClient.get(False)
             print("polling for data")
             if data:
                 self.transport.write(data)
         except Exception:
             pass
+            #print("Exception")
 
     def connectionMade(self):
         print("CSClient -> GSServer Connection made")
@@ -32,6 +34,7 @@ class TransportCSClientProtocol(protocol.Protocol):
             self.registered(packet)
         else:
             print("sending data to worker")
+            print(packet)
             self.factory.fromCSClientToWorker.put(packet)
     
     def register(self):

@@ -33,11 +33,12 @@ def createChunks(self, filename):
 
 # run master
 if __name__ == "__main__":
-    fromMasterToCSClient = Queue()
-    fromCSClientToMaster = Queue()
+    fromWorkerToCSClient = Queue()
+    fromCSClientToWorker = Queue()
 
-    reactor.listenTCP(8000, TransportMasterFactory(fromMasterToCSClient, fromCSClientToMaster))
-    reactor.connectTCP("localhost", 4004, TransportCSClientFactory(MASTER_ID, fromMasterToCSClient, fromCSClientToMaster))    
+    reactor.listenTCP(8000, TransportMasterFactory(fromWorkerToCSClient, fromCSClientToWorker))
+    reactor.connectTCP("localhost", 4004, TransportCSClientFactory(MASTER_ID, fromWorkerToCSClient, fromCSClientToWorker))
+    
 
     print("Master is up and running")
     reactor.run()

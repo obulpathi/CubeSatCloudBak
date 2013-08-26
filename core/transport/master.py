@@ -1,28 +1,26 @@
 import pickle
 
+from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
 from cloud.core.common import *
 
-class TransportMasterProtocol(protocol.Protocol):    
+class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
-        loopcall = task.LoopingCall(self.pollForDataFromCSClient)
-        loopcall.start(0.1) # call every second
-
+        loopcall2 = task.LoopingCall(self.pollForDataFromCSClient)
+        loopcall2.start(0.1) # call every second
+        
     def pollForDataFromCSClient(self):
         try:
-            print("waiting for data******************************")
-            packet = self.factory.fromCSClientToMaster.get(False)
-            print("polling for data")
+            packet = self.factory.fromCSClientToWorker.get(False)
             if packet:
-                print("Master received data from CSClient ##########################")
                 self.receivedCommand(packet)
         except Exception:
             pass
                 
-    # received data              
+    # received data      
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
         if packet.flags & REGISTER:
@@ -67,11 +65,12 @@ class TransportMasterProtocol(protocol.Protocol):
 
 # Master factory
 class TransportMasterFactory(protocol.Factory):
-    def __init__(self, fromMasterToCSClient, fromCSClientToMaster):
+    def __init__(self, fromWorkerToCSClient, fromCSClientToWorker):
         self.id = 0
         self.registrationCount = 0
-        self.fromMasterToCSClient = fromMasterToCSClient
-        self.fromCSClientToMaster = fromCSClientToMaster
+        self.fromWorkerToCSClient = fromWorkerToCSClient
+        self.fromCSClientToWorker = fromCSClientToWorker
         
     def buildProtocol(self, addr):
+        print("build protocol called")
         return TransportMasterProtocol(self)
