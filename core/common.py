@@ -146,6 +146,16 @@ class Packet(object):
                 str(self.source) + ", Destination: " + str(self.destination) + flagstring + \
                 ", Payload: " + str(self.payload) + ", Size: " + str(self.size)
 
+class WaitForData(threading.Thread):
+    def __init__(self, queue, callback):
+        self.queue = queue
+        self.callback = callback
+        threading.Thread.__init__(self)
+    def run (self):
+        while True:
+            data = self.queue.get()
+            self.callback(data)
+
 class LLPacket(object):
     def __init__(self, id, size, payload, flags = 0x00):
         self.id = id

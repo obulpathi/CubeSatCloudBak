@@ -1,18 +1,22 @@
 import pickle
+import threading
 
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
 from cloud.core.common import *
-
+            
 class TransportGSClientProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.id = None
-        loopcall = task.LoopingCall(self.pollForDataFromGSServer)
-        loopcall.start(0.1) # call every second
+        self.waiter = WaitForData(self.factory.fromGSServerToGSClient, self.getData)
+        self.waiter.start()
+        #loopcall = task.LoopingCall(self.pollForDataFromGSServer)
+        #loopcall.start(0.1) # call every second
 
+    """
     def pollForDataFromGSServer(self):
         try:
             data = self.factory.fromGSServerToGSClient.get(False)
@@ -20,7 +24,11 @@ class TransportGSClientProtocol(protocol.Protocol):
                 self.transport.write(data)
         except Exception:
             pass
+    """
 
+    def getData(self, data):
+        self.transport.write(data)
+        
     def connectionMade(self):
         print("GSClient connection made")
         self.register()
