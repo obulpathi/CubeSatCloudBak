@@ -6,22 +6,21 @@ from twisted.internet import protocol
 
 from cloud.core.common import *
 
-class TransportRouterProtocol(protocol.Protocol):
+class TransportGSServerProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
 
-        loopcall = task.LoopingCall(self.pollForDataFromWorker)
+        loopcall = task.LoopingCall(self.pollForDataFromGSClient)
         loopcall.start(0.1) # call every second
 
-    def pollForDataFromWorker(self):
+    def pollForDataFromGSClient(self):
         try:
-            packet = self.factory.fromWorkerToRouter.get(False)
-            if not packet:
-                return
-            if packet.flags & REGISTERED:
+            packet = self.factory.fromGSClientToGSServer.get(False)
+            if packet:
+                print("GSServer received data from GSClient")
+                print("uplinking data")
+                print(packet)
                 self.transport.write(pickle.dumps(packet))
-            else:
-                print("received unknown packet type")
         except Exception:
             pass
 
@@ -43,7 +42,7 @@ class TransportRouterProtocol(protocol.Protocol):
     def registerWorker(self, packetstring):
         print("router got the registration request")
         # send this packet to master
-        self.factory.fromRouterToWorker.put(packetstring)
+        self.factory.fromGSServerToGSClient.put(packetstring)
         
     def transmitChunk(self):
         self.transport.write(chunk)
@@ -51,9 +50,9 @@ class TransportRouterProtocol(protocol.Protocol):
     def replicateChunk(self):
         print("replicate chunk")
     
-class TransportRouterFactory(protocol.Factory):
-    def __init__(self, fromWorkerToRouter, fromRouterToWorker):
-        self.fromWorkerToRouter = fromWorkerToRouter
-        self.fromRouterToWorker = fromRouterToWorker
+class TransportGSServerFactory(protocol.Factory):
+    def __init__(self, fromGSClientToGSServer, fromGSServerToGSClient):
+        self.fromGSClientToGSServer = fromGSClientToGSServer
+        self.fromGSServerToGSClient = fromGSServerToGSClient
     def buildProtocol(self, addr):
-        return TransportRouterProtocol(self)
+        return TransportGSServerProtocol(self)

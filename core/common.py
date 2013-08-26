@@ -90,13 +90,25 @@ class Chunk(object):
                ", Box: " + str(self.box) + ", Data: DATA"
 
 # Packet flags
-NO_FLAGS    = 0x0000
-REGISTER    = 0x0001
-REGISTERED  = 0x0002
-GET_CHUNK   = 0x0004
-CHUNK       = 0x0008
+NO_FLAG     = 0
+REGISTER    = 1
+REGISTERED  = 2
+UNREGISTER  = 3
+UNREGISTERED= 4
+TORRENT     = 5
+MAPREDUCE   = 6
+GET_CHUNK   = 7
+CHUNK       = 8
+COMMAND     = 9
+
+MISSION     = TORRENT
+
 # packet constants
 HEADERS_SIZE = 22
+
+# addresses
+MASTER_ID   = 0
+SERVER_ID   = 100
 
 # Packet definition
 class Packet(object):
@@ -110,9 +122,29 @@ class Packet(object):
         self.flags = flags
         
     def __repr__(self):
+        flagstring = ""
+        if self.flags == REGISTER:
+            flagstring = flagstring + ", " + "REGISTER"
+        elif self.flags & REGISTERED:
+            flagstring = flagstring + ", " + "REGISTERED"
+        elif self.flags == UNREGISTER:
+            flagstring = flagstring + ", " + "UNREGISTER"
+        elif self.flags == UNREGISTERED:
+            flagstring = flagstring + ", " + "UNREGISTERED"
+        elif self.flags == TORRENT:
+            flagstring = flagstring + ", " + "TORRENT"
+        elif self.flags == MAPREDUCE:
+            flagstring = flagstring + ", " + "MAPREDUCE"
+        elif self.flags == GET_CHUNK:
+            flagstring = flagstring + ", " + "GET_CHUNK"
+        elif self.flags == CHUNK:
+            flagstring = flagstring + ", " + "CHUNK"
+        else:
+            flagstring = flagstring + ", " + "UNKNOWN FLAG"
+        
         return "Sender: " + str(self.sender) + ", Receiver: " + str(self.receiver) + ", Source: " + \
-                str(self.source) + ", Destination: " + str(self.destination) + ", Payload: " + \
-                str(self.payload) + ", Size: " + str(self.size)
+                str(self.source) + ", Destination: " + str(self.destination) + flagstring + \
+                ", Payload: " + str(self.payload) + ", Size: " + str(self.size)
 
 class LLPacket(object):
     def __init__(self, id, size, payload, flags = 0x00):

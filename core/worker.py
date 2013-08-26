@@ -4,7 +4,7 @@ from twisted.internet import protocol
 from multiprocessing import Queue
 
 from cloud.core.common import *
-from cloud.core.transport.client import *
+from cloud.core.transport.worker import *
 from cloud.core.transport.router import *
 
 # Worker class
@@ -23,12 +23,12 @@ class Worker(object):
 
 # run the worker and twisted reactor
 if __name__ == "__main__":
-    fromRouterToClient = Queue()
-    fromClientToRouter = Queue()
+    fromRouterToWorker = Queue()
+    fromWorkerToRouter = Queue()
     
     route_table = {}
     # start client and router
-    reactor.connectTCP("localhost", 8000, TransportClientFactory(fromClientToRouter, fromRouterToClient))
-    reactor.listenTCP(8008, TransportRouterFactory(fromClientToRouter, fromRouterToClient))
+    reactor.connectTCP("localhost", 8000, TransportWorkerFactory(fromWorkerToRouter, fromRouterToWorker))
+    reactor.listenTCP(8008, TransportRouterFactory(fromWorkerToRouter, fromRouterToWorker))
     print("Client and Router are up and running")
     reactor.run()

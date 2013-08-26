@@ -1,8 +1,11 @@
 from twisted.internet import reactor
 from twisted.internet import protocol
 
+from multiprocessing import Queue
+
 from cloud.core.common import *
-from cloud.core.transport.server import *
+from cloud.core.transport.master import *
+from cloud.core.transport.csclient import *
 
 # simulate sensing and return filename containing the remote sensing data
 def sense(self):
@@ -30,7 +33,11 @@ def createChunks(self, filename):
 
 # run master
 if __name__ == "__main__":
-    route_table = {}
-    reactor.listenTCP(8000, TransportServerFactory())
+    fromMasterToCSClient = Queue()
+    fromCSClientToMaster = Queue()
+
+    reactor.listenTCP(8000, TransportMasterFactory(fromMasterToCSClient, fromCSClientToMaster))
+    reactor.connectTCP("localhost", 4004, TransportCSClientFactory(MASTER_ID, fromMasterToCSClient, fromCSClientToMaster))    
+
     print("Master is up and running")
     reactor.run()
