@@ -4,9 +4,8 @@ from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
 
-from cloud.core.common import *
-from cloud.core.transport.server import *
-from cloud.core.transport.csclient import *
+from cloud.common import *
+from cloud.transport.server import *
 
 # run server
 if __name__ == "__main__":

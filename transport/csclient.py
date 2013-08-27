@@ -5,12 +5,13 @@ from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
-from cloud.core.common import *
+from cloud.common import *
 
 class TransportCSClientProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
-        self.waiter = WaitForData(self.factory.fromWorkerToCSClient, self.getData)
+        self.id = None
+        self.waiter = WaitForData(self.factory.fromCSServerToCSClient, self.getData)
         self.waiter.start()
 
     def getData(self, data):
@@ -18,52 +19,63 @@ class TransportCSClientProtocol(protocol.Protocol):
         self.transport.write(data)
 
     def connectionMade(self):
-        log.msg("CSClient -> GSServer Connection made")
+        log.msg("Worker connection made")
         self.register()
     
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
         log.msg("data received")
-        if packet.flags == REGISTERED:
+        if self.id and packet.destination != self.id:
+            log.msg(packet.destination)
+            log.msg(self.id)
+            log.msg("forwarding data to child")
+            self.forwardToChild(packet)
+        elif packet.flags & REGISTERED:
             self.registered(packet)
+        elif packet.flags & CHUNK:
+            self.receivedChunk(packet)
         else:
-            log.msg("sending data to worker")
-            log.msg(packet)
-            self.factory.fromCSClientToWorker.put(packet)
+            log.msg("Server said: %s" % packetstring)
     
     def register(self):
-        log.msg("registering with ground station and server")
-        packet = Packet(self.factory.address, "ground station", self.factory.address, SERVER_ID, REGISTER, None, HEADERS_SIZE)
+        log.msg("registering")
+        packet = Packet("sender", "receiver", "worker", "destination", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
         
     def registered(self, packet):
-        log.msg("Whoa!!!!! >>> CubeSatClient Registered with Server #################")
-        self.status = REGISTERED
-        self.getCommand()
+        log.msg("Whoa!!!!!")
+        self.id = packet.payload
+        self.status = IDLE
+        self.requestChunk()
         
     def deregister(self):
-        log.msg("TODO: DEREGISTRAITON >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         self.transport.loseConnection()
     
-    def getCommand(self):
-        log.msg("requesting server for command")
-        packet = Packet(self.factory.address, "ground station", self.factory.address, SERVER_ID, COMMAND, None, HEADERS_SIZE)
-        data = pickle.dumps(packet)
-        self.transport.write(data)
-            
-    def downlinkToGroundStation(self, packet):
+    def forwardToMaster(self, packet):
         self.transport.write(packetstring)
     
-    def uplinkFromGroundStation(self, packet):
-        pass
+    def forwardToChild(self, packet):
+        self.factory.fromCSClientToCSServer.put(packet)
+        
+    def requestChunk(self):
+        log.msg("requesting chunk")
+        packet = Packet(self.id, "receiver", self.id, "destination", GET_CHUNK, None, HEADERS_SIZE)
+        data = pickle.dumps(packet)
+        self.transport.write(data)
+    
+    def receivedChunk(self, packet):
+        log.msg("Chunk received")
+        chunk = open("chunk1.jpg", "wb")
+        chunk.write(packet.payload.data)
+        chunk.close()
 
-
+            
 class TransportCSClientFactory(protocol.ClientFactory):
-    def __init__(self, address, fromWorkerToCSClient, fromCSClientToWorker):
+    def __init__(self, address, fromCSClientToCSServer, fromCSServerToCSClient):
         self.address = address
-        self.fromWorkerToCSClient = fromWorkerToCSClient
-        self.fromCSClientToWorker = fromCSClientToWorker
+        self.fromCSClientToCSServer = fromCSClientToCSServer
+        self.fromCSServerToCSClient = fromCSServerToCSClient
     def buildProtocol(self, addr):
         return TransportCSClientProtocol(self)
     def clientConnectionFailed(self, connector, reason):

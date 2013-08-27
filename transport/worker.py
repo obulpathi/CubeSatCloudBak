@@ -5,13 +5,13 @@ from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
-from cloud.core.common import *
+from cloud.common import *
 
 class TransportWorkerProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.id = None
-        self.waiter = WaitForData(self.factory.fromRouterToWorker, self.getData)
+        self.waiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
         self.waiter.start()
 
     def getData(self, data):
@@ -25,6 +25,7 @@ class TransportWorkerProtocol(protocol.Protocol):
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
         log.msg("data received")
+        # check if packet is for self
         if self.id and packet.destination != self.id:
             log.msg(packet.destination)
             log.msg(self.id)
@@ -51,12 +52,12 @@ class TransportWorkerProtocol(protocol.Protocol):
         
     def deregister(self):
         self.transport.loseConnection()
-    
-    def forwardToMaster(self, packet):
-        self.transport.write(packetstring)
-    
+
+    def forwardToServer(self, packet):
+        self.factory.fromWorkerToCSClient.put(packet)
+            
     def forwardToChild(self, packet):
-        self.factory.fromWorkerToRouter.put(packet)
+        self.factory.fromWorkerToCSServer.put(packet)
         
     def requestChunk(self):
         log.msg("requesting chunk")
@@ -72,9 +73,9 @@ class TransportWorkerProtocol(protocol.Protocol):
 
             
 class TransportWorkerFactory(protocol.ClientFactory):
-    def __init__(self, fromWorkerToRouter, fromRouterToWorker):
-        self.fromWorkerToRouter = fromWorkerToRouter
-        self.fromRouterToWorker = fromRouterToWorker
+    def __init__(self, fromWorkerToCSClient, fromCSClientToWorker):
+        self.fromWorkerToCSClient = fromWorkerToCSClient
+        self.fromCSClientToWorker = fromCSClientToWorker
     def buildProtocol(self, addr):
         return TransportWorkerProtocol(self)
     def clientConnectionFailed(self, connector, reason):

@@ -5,7 +5,7 @@ from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
 
-from cloud.core.common import *
+from cloud.common import *
 
 class TransportServerProtocol(protocol.Protocol):
     def __init__(self, factory):

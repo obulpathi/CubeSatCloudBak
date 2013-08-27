@@ -4,18 +4,18 @@ from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
-from cloud.core.common import *
+from cloud.common import *
 
-class TransportRouterProtocol(protocol.Protocol):
+class TransportCSServerProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
 
-        loopcall = task.LoopingCall(self.pollForDataFromWorker)
+        loopcall = task.LoopingCall(self.pollForDataFromCSClient)
         loopcall.start(0.1) # call every second
 
-    def pollForDataFromWorker(self):
+    def pollForDataFromCSClient(self):
         try:
-            packet = self.factory.fromWorkerToRouter.get(False)
+            packet = self.factory.fromCSClientToCSServer.get(False)
             if not packet:
                 return
             if packet.flags & REGISTERED:
@@ -31,7 +31,7 @@ class TransportRouterProtocol(protocol.Protocol):
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
         if packet.flags & REGISTER:
-            self.registerWorker(packetstring)
+            self.registerCSClient(packetstring)
         elif packet.flags & GET_CHUNK:
             self.sendChunk(packet)
         else:
@@ -43,7 +43,7 @@ class TransportRouterProtocol(protocol.Protocol):
     def registerWorker(self, packetstring):
         log.msg("router got the registration request")
         # send this packet to master
-        self.factory.fromRouterToWorker.put(packetstring)
+        self.factory.fromCSServerToCSClient.put(packetstring)
         
     def transmitChunk(self):
         self.transport.write(chunk)
@@ -51,9 +51,9 @@ class TransportRouterProtocol(protocol.Protocol):
     def replicateChunk(self):
         log.msg("replicate chunk")
     
-class TransportRouterFactory(protocol.Factory):
-    def __init__(self, fromWorkerToRouter, fromRouterToWorker):
-        self.fromWorkerToRouter = fromWorkerToRouter
-        self.fromRouterToWorker = fromRouterToWorker
+class TransportCSServerFactory(protocol.Factory):
+    def __init__(self, fromCSClientToCSServer, fromCSServerToCSClient):
+        self.fromCSClientToCSServer = fromCSClientToCSServer
+        self.fromCSServerToCSClient = fromCSServerToCSClient
     def buildProtocol(self, addr):
-        return TransportRouterProtocol(self)
+        return TransportCSServerProtocol(self)

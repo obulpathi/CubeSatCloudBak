@@ -5,9 +5,9 @@ from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
 
-from cloud.core.common import *
-from cloud.core.transport.gsclient import *
-from cloud.core.transport.gsserver import *
+from cloud.common import *
+from cloud.transport.gsclient import *
+from cloud.transport.gsserver import *
 
 # run the worker and twisted reactor
 if __name__ == "__main__":

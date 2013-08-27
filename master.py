@@ -5,9 +5,9 @@ from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
 
-from cloud.core.common import *
-from cloud.core.transport.master import *
-from cloud.core.transport.csclient import *
+from cloud.common import *
+from cloud.transport.master import *
+from cloud.transport.csclient import *
 
 # simulate sensing and return filename containing the remote sensing data
 def sense(self):
