@@ -10,7 +10,7 @@ from cloud.core.transport.csclient import *
 
 # run server
 if __name__ == "__main__":
-    #log.startLogging(open('/var/log/server.log', 'w'))
+    # log.startLogging(open('/var/log/server.log', 'w'))
     log.startLogging(sys.stdout)
     reactor.listenTCP(4000, TransportServerFactory())
     log.msg("Server is up and running")
