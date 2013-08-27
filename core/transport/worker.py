@@ -1,5 +1,6 @@
 import pickle
 
+from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
@@ -10,44 +11,40 @@ class TransportWorkerProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.id = None
-        loopcall = task.LoopingCall(self.pollForDataFromRouter)
-        loopcall.start(0.1) # call every second
+        self.waiter = WaitForData(self.factory.fromRouterToWorker, self.getData)
+        self.waiter.start()
 
-    def pollForDataFromRouter(self):
-        try:
-            data = self.factory.fromRouterToWorker.get(False)
-            if data:
-                self.transport.write(data)
-        except Exception:
-            pass
+    def getData(self, data):
+        log.msg(data)
+        self.transport.write(data)
 
     def connectionMade(self):
-        print("Worker connection made")
+        log.msg("Worker connection made")
         self.register()
     
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
-        print("data received")
+        log.msg("data received")
         if self.id and packet.destination != self.id:
-            print(packet.destination)
-            print(self.id)
-            print("forwarding data to child")
+            log.msg(packet.destination)
+            log.msg(self.id)
+            log.msg("forwarding data to child")
             self.forwardToChild(packet)
         elif packet.flags & REGISTERED:
             self.registered(packet)
         elif packet.flags & CHUNK:
             self.receivedChunk(packet)
         else:
-            print "Server said:", packetstring
+            log.msg("Server said: %s" % packetstring)
     
     def register(self):
-        print("registering")
+        log.msg("registering")
         packet = Packet("sender", "receiver", "worker", "destination", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
         
     def registered(self, packet):
-        print("Whoa!!!!!")
+        log.msg("Whoa!!!!!")
         self.id = packet.payload
         self.status = IDLE
         self.requestChunk()
@@ -62,13 +59,13 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.factory.fromWorkerToRouter.put(packet)
         
     def requestChunk(self):
-        print("requesting chunk")
+        log.msg("requesting chunk")
         packet = Packet(self.id, "receiver", self.id, "destination", GET_CHUNK, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
     
     def receivedChunk(self, packet):
-        print("Chunk received")
+        log.msg("Chunk received")
         chunk = open("chunk1.jpg", "wb")
         chunk.write(packet.payload.data)
         chunk.close()
@@ -81,8 +78,8 @@ class TransportWorkerFactory(protocol.ClientFactory):
     def buildProtocol(self, addr):
         return TransportWorkerProtocol(self)
     def clientConnectionFailed(self, connector, reason):
-        print "Connection failed."
+        log.msg("Connection failed.")
         reactor.stop()
     def clientConnectionLost(self, connector, reason):
-        print "Connection lost."
+        log.msg("Connection lost.")
         reactor.stop()

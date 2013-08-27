@@ -1,5 +1,6 @@
 import pickle
 
+from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
@@ -32,7 +33,7 @@ class TransportMasterProtocol(protocol.Protocol):
     
     # register worker
     def registerWorker(self, packet):
-        print("registered slave")
+        log.msg("registered slave")
         self.factory.registrationCount = self.factory.registrationCount + 1
         packet = Packet(self.factory.id, "receiver", self.factory.id, self.factory.registrationCount, REGISTERED, \
                         self.factory.registrationCount, HEADERS_SIZE)
@@ -41,7 +42,7 @@ class TransportMasterProtocol(protocol.Protocol):
     
     # transmit chunk
     def transmitChunk(self, destination):
-        print("Master got request for chunk")
+        log.msg("Master got request for chunk")
         image = open("chunk.jpg", "rb")
         data = image.read()
         chunk = Chunk("chunkid", "size", "box", data)
@@ -52,15 +53,15 @@ class TransportMasterProtocol(protocol.Protocol):
 
     # received command
     def receivedCommand(self, packet):
-        print("Received Command>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        log.msg("Received Command>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         if packet.flags == TORRENT:
-            print("Torrent command")
+            log.msg("Torrent command")
         elif packet.flags == MAPREDUCE:
-            print("MapReduce command")
+            log.msg("MapReduce command")
         elif packet.flags == CDFS:
-            print("CDFS command")
+            log.msg("CDFS command")
         else:
-            print("Unknown command")
+            log.msg("Unknown command")
 
 
 # Master factory
@@ -72,5 +73,5 @@ class TransportMasterFactory(protocol.Factory):
         self.fromCSClientToWorker = fromCSClientToWorker
         
     def buildProtocol(self, addr):
-        print("build protocol called")
+        log.msg("build protocol called")
         return TransportMasterProtocol(self)

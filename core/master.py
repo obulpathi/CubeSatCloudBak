@@ -1,7 +1,9 @@
+import sys
+from multiprocessing import Queue
+
+from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
-
-from multiprocessing import Queue
 
 from cloud.core.common import *
 from cloud.core.transport.master import *
@@ -33,6 +35,10 @@ def createChunks(self, filename):
 
 # run master
 if __name__ == "__main__":
+    # set up logging
+    #log.startLogging(open('/var/log/master.log', 'w'))
+    log.startLogging(sys.stdout)
+    #set up IPC channels    
     fromWorkerToCSClient = Queue()
     fromCSClientToWorker = Queue()
 
@@ -40,5 +46,5 @@ if __name__ == "__main__":
     reactor.connectTCP("localhost", 4004, TransportCSClientFactory(MASTER_ID, fromWorkerToCSClient, fromCSClientToWorker))
     
 
-    print("Master is up and running")
+    log.msg("Master is up and running")
     reactor.run()

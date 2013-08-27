@@ -1,6 +1,8 @@
+from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
 
+import sys
 from multiprocessing import Queue
 
 from cloud.core.common import *
@@ -23,6 +25,10 @@ class Worker(object):
 
 # run the worker and twisted reactor
 if __name__ == "__main__":
+    # set up logging
+    #log.startLogging(open('/var/log/master.log', 'w'))
+    log.startLogging(sys.stdout)
+    #set up IPC channels
     fromRouterToWorker = Queue()
     fromWorkerToRouter = Queue()
     
@@ -30,5 +36,5 @@ if __name__ == "__main__":
     # start client and router
     reactor.connectTCP("localhost", 8000, TransportWorkerFactory(fromWorkerToRouter, fromRouterToWorker))
     reactor.listenTCP(8008, TransportRouterFactory(fromWorkerToRouter, fromRouterToWorker))
-    print("Client and Router are up and running")
+    log.msg("Client and Router are up and running")
     reactor.run()

@@ -21,12 +21,12 @@ class TransportRouterProtocol(protocol.Protocol):
             if packet.flags & REGISTERED:
                 self.transport.write(pickle.dumps(packet))
             else:
-                print("received unknown packet type")
+                log.msg("received unknown packet type")
         except Exception:
             pass
 
     def connectionMade(self):
-        print("router connection made")
+        log.msg("router connection made")
                 
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
@@ -38,10 +38,10 @@ class TransportRouterProtocol(protocol.Protocol):
             log("Unknown stuff")
     
     def forwardToChild(self, packet):
-        print("data received from master")
+        log.msg("data received from master")
         
     def registerWorker(self, packetstring):
-        print("router got the registration request")
+        log.msg("router got the registration request")
         # send this packet to master
         self.factory.fromRouterToWorker.put(packetstring)
         
@@ -49,7 +49,7 @@ class TransportRouterProtocol(protocol.Protocol):
         self.transport.write(chunk)
     
     def replicateChunk(self):
-        print("replicate chunk")
+        log.msg("replicate chunk")
     
 class TransportRouterFactory(protocol.Factory):
     def __init__(self, fromWorkerToRouter, fromRouterToWorker):
