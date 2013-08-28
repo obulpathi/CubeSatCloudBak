@@ -17,7 +17,6 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.ccwaiter.start()
 
     def getData(self, data):
-        log.msg(data)
         self.transport.write(data)
 
     def connectionMade(self):

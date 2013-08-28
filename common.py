@@ -107,10 +107,6 @@ MISSION     = 11
 # packet constants
 HEADERS_SIZE = 22
 
-# addresses
-MASTER_ID   = 0
-SERVER_ID   = 100
-
 # Packet definition
 class Packet(object):
     def __init__(self, sender, receiver, source, destination, flags, payload, size):

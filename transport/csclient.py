@@ -15,7 +15,6 @@ class TransportCSClientProtocol(protocol.Protocol):
         self.waiter.start()
 
     def getData(self, data):
-        log.msg(data)
         self.transport.write(data)
 
     def connectionMade(self):
@@ -24,7 +23,7 @@ class TransportCSClientProtocol(protocol.Protocol):
         # self.register()
     
     def dataReceived(self, packetstring):
-        self.fromCSClientToWorker.put(packetstring)
+        self.factory.fromCSClientToWorker.put(packetstring)
     
     def register1(self):
         packet = Packet("sender", "receiver", "worker", "Server", REGISTER, None, HEADERS_SIZE)

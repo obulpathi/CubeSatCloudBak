@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # start Worker, CSClient and CSServer
     reactor.connectTCP(config.master.address, config.master.port,
                         TransportWorkerFactory(fromWorkerToCSClient, fromCSClientToWorker,
-                        fromWorkerToCSServer, fromCSServerToWorker))
+                                               fromWorkerToCSServer, fromCSServerToWorker))
     reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
                         TransportCSClientFactory(fromWorkerToCSClient, fromCSClientToWorker))
     reactor.listenTCP(config.csserver.port,

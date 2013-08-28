@@ -52,9 +52,10 @@ class TransportServerProtocol(protocol.Protocol):
 
     # send mission to ground station
     def sendMission(self, receiver):
+        log.msg("Sending mission >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
         packet = Packet(self.factory.address, receiver, self.factory.address, "Master", MISSION, \
             TORRENT, HEADERS_SIZE)
-        packetstring = pickle.dumps(new_packet)
+        packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
 
 # Server factory
