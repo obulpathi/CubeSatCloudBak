@@ -1,4 +1,5 @@
 import sys
+import yaml
 from multiprocessing import Queue
 
 from twisted.python import log
@@ -35,16 +36,13 @@ def createChunks(self, filename):
 
 # run master
 if __name__ == "__main__":
+    # read configuration
+    f = open('config.yaml')
+    configDict = yaml.load(f)
+    f.close()
+    config = Struct(configDict)
     # set up logging
     #log.startLogging(open('/var/log/master.log', 'w'))
     log.startLogging(sys.stdout)
-    #set up IPC channels    
-    fromWorkerToCSClient = Queue()
-    fromCSClientToWorker = Queue()
-
-    reactor.listenTCP(8000, TransportMasterFactory(fromWorkerToCSClient, fromCSClientToWorker))
-    reactor.connectTCP("localhost", 4004, TransportCSClientFactory(MASTER_ID, fromWorkerToCSClient, fromCSClientToWorker))
-    
-
-    log.msg("Master is up and running")
+    reactor.listenTCP(config.master.port, TransportMasterFactory())
     reactor.run()

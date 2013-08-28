@@ -14,22 +14,18 @@ class TransportGSServerProtocol(protocol.Protocol):
         self.waiter.start()
 
     def getData(self, packet):
-        log.msg("GSServer received data from GSClient")
-        log.msg("uplinking data")
-        log.msg(packet)
         self.transport.write(pickle.dumps(packet))
     
     def connectionMade(self):
-        log.msg("router connection made")
+        log.msg("GSServer <---> CSClient connection made")
              
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
-        if packet.flags & REGISTER:
-            self.registerWorker(packetstring)
-        elif packet.flags & GET_CHUNK:
-            self.sendChunk(packet)
+        if packet.destination == "Server":
+            self.factory.fromGSServerToGSClient.put(packetstring)
         else:
-            log("Unknown stuff")
+            log.msg(packet)
+            log("Unknown stuff: FIX ME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
     
     def forwardToChild(self, packet):
         log.msg("data received from master")

@@ -1,4 +1,5 @@
 import sys
+import yaml
 from multiprocessing import Queue
 
 from twisted.python import log
@@ -11,15 +12,20 @@ from cloud.transport.gsserver import *
 
 # run the worker and twisted reactor
 if __name__ == "__main__":
-    # set up logging
+    # read configuration
+    f = open('config.yaml')
+    configDict = yaml.load(f)
+    f.close()
+    config = Struct(configDict)
+    # setup logging
     #log.startLogging(open('/var/log/groundstation.log', 'w'))
     log.startLogging(sys.stdout)
     fromGSClientToGSServer = Queue()
     fromGSServerToGSClient = Queue()
-    
-    route_table = {}
-    # start client and router
-    reactor.connectTCP("localhost", 4000, TransportGSClientFactory(fromGSClientToGSServer, fromGSServerToGSClient))
-    reactor.listenTCP(4004, TransportGSServerFactory(fromGSClientToGSServer, fromGSServerToGSClient))
-    log.msg("Client and Router are up and running")
+    # start GSClient and GSServer
+    reactor.connectTCP(config.server.address, config.server.port, 
+                        TransportGSClientFactory(fromGSClientToGSServer, fromGSServerToGSClient))
+    reactor.listenTCP(config.groundstation.port, 
+                        TransportGSServerFactory(fromGSClientToGSServer, fromGSServerToGSClient))
+    log.msg("GSClient and GSServer are up and running")
     reactor.run()

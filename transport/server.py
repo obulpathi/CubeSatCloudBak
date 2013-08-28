@@ -20,58 +20,47 @@ class TransportServerProtocol(protocol.Protocol):
             else:
                 self.registerCubeSat(packet)
         elif packet.flags == UNREGISTER:
-            self.unregisterGroundStation(packet)
-        elif packet.flags == COMMAND:
-            self.sendCommand(packet)
+            self.unregister(packet)
+        elif packet.flags == GET_MISSION:
+            self.sendMission(packet.sender)
         elif packet.flags == CHUNK:
             self.receiveChunk(packet)
         else:
-            log.msg("Unknown stuff")
+            log.msg("Unknown stuff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
+            log.msg(packet)
     
     # register groundstation
     def registerGroundStation(self, packet):
         log.msg("registered ground station")
         self.factory.registrationCount = self.factory.registrationCount + 1
-        packet = Packet(self.factory.id, "receiver", self.factory.id, self.factory.registrationCount, REGISTERED, \
+        packet = Packet(self.factory.address, "receiver", self.factory.address, self.factory.registrationCount, REGISTERED, \
                         self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
     
-    # unregister groundstation
-    def unregisterGroundStaiton(self, packet):
-        log.msg("TODO: unregistered ground station ^&%&^#%@&^#%@#&^ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    # unregister what?
+    def unregister(self, packet):
+        log.msg("TODO: unregistered WHAT?? ^&%&^#%@&^#%@#&^ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     
     # register CubeSat
     def registerCubeSat(self, packet):
         log.msg("registering CubeSat")
-        new_packet = Packet(self.factory.id, packet.sender, self.factory.id, packet.source, REGISTERED, \
+        new_packet = Packet(self.factory.address, packet.sender, self.factory.address, packet.source, REGISTERED, \
                         None, HEADERS_SIZE)
         packetstring = pickle.dumps(new_packet)
         self.transport.write(packetstring)
-    
-    # uplink mission command to CubeSat
-    def sendCommand(self, packet):
-        log.msg("Uplinking the command")
-        packet = Packet(1000, packet.sender, self.factory.id, MASTER_ID, TORRENT, \
-            None, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.transport.write(packetstring)
-        
-    # transmit command
-    def transmitCommand(self, destination):
-        log.msg("Master got request for chunk")
-        image = open("chunk.jpg", "rb")
-        data = image.read()
-        chunk = Chunk("chunkid", "size", "box", data)
-        packet = Packet(self.factory.id, "receiver", self.factory.id, destination, CHUNK, \
-                        chunk, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
+
+    # send mission to ground station
+    def sendMission(self, receiver):
+        packet = Packet(self.factory.address, receiver, self.factory.address, "Master", MISSION, \
+            TORRENT, HEADERS_SIZE)
+        packetstring = pickle.dumps(new_packet)
         self.transport.write(packetstring)
 
 # Server factory
 class TransportServerFactory(protocol.Factory):
     def __init__(self):
-        self.id = 100
+        self.address = "Server"
         self.registrationCount = 100
         
     def buildProtocol(self, addr):

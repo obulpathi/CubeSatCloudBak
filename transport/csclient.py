@@ -11,7 +11,7 @@ class TransportCSClientProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.id = None
-        self.waiter = WaitForData(self.factory.fromCSServerToCSClient, self.getData)
+        self.waiter = WaitForData(self.factory.fromWorkerToCSClient, self.getData)
         self.waiter.start()
 
     def getData(self, data):
@@ -20,62 +20,30 @@ class TransportCSClientProtocol(protocol.Protocol):
 
     def connectionMade(self):
         log.msg("Worker connection made")
-        self.register()
+        self.status = REGISTERED
+        # self.register()
     
     def dataReceived(self, packetstring):
-        packet = pickle.loads(packetstring)
-        log.msg("data received")
-        if self.id and packet.destination != self.id:
-            log.msg(packet.destination)
-            log.msg(self.id)
-            log.msg("forwarding data to child")
-            self.forwardToChild(packet)
-        elif packet.flags & REGISTERED:
-            self.registered(packet)
-        elif packet.flags & CHUNK:
-            self.receivedChunk(packet)
-        else:
-            log.msg("Server said: %s" % packetstring)
+        self.fromCSClientToWorker.put(packetstring)
     
-    def register(self):
-        log.msg("registering")
-        packet = Packet("sender", "receiver", "worker", "destination", REGISTER, None, HEADERS_SIZE)
+    def register1(self):
+        packet = Packet("sender", "receiver", "worker", "Server", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
         
-    def registered(self, packet):
+    def registered1(self, packet):
         log.msg("Whoa!!!!!")
         self.id = packet.payload
-        self.status = IDLE
-        self.requestChunk()
+        self.status = REGISTERED
         
     def deregister(self):
         self.transport.loseConnection()
-    
-    def forwardToMaster(self, packet):
-        self.transport.write(packetstring)
-    
-    def forwardToChild(self, packet):
-        self.factory.fromCSClientToCSServer.put(packet)
         
-    def requestChunk(self):
-        log.msg("requesting chunk")
-        packet = Packet(self.id, "receiver", self.id, "destination", GET_CHUNK, None, HEADERS_SIZE)
-        data = pickle.dumps(packet)
-        self.transport.write(data)
-    
-    def receivedChunk(self, packet):
-        log.msg("Chunk received")
-        chunk = open("chunk1.jpg", "wb")
-        chunk.write(packet.payload.data)
-        chunk.close()
-
             
 class TransportCSClientFactory(protocol.ClientFactory):
-    def __init__(self, address, fromCSClientToCSServer, fromCSServerToCSClient):
-        self.address = address
-        self.fromCSClientToCSServer = fromCSClientToCSServer
-        self.fromCSServerToCSClient = fromCSServerToCSClient
+    def __init__(self, fromWorkerToCSClient, fromCSClientToWorker):
+        self.fromWorkerToCSClient = fromWorkerToCSClient
+        self.fromCSClientToWorker = fromCSClientToWorker
     def buildProtocol(self, addr):
         return TransportCSClientProtocol(self)
     def clientConnectionFailed(self, connector, reason):

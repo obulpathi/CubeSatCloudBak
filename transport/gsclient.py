@@ -11,9 +11,10 @@ from cloud.common import *
 class TransportGSClientProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
-        self.id = None
+        self.address = "GroundStation"
         self.waiter = WaitForData(self.factory.fromGSServerToGSClient, self.getData)
         self.waiter.start()
+        self.state = UNREGISTERED # what the begin state?
 
     def getData(self, data):
         self.transport.write(data)
@@ -24,28 +25,22 @@ class TransportGSClientProtocol(protocol.Protocol):
     
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
-        log.msg("data received")
         log.msg(packet)
-        if self.id and packet.destination != self.id:
-            log.msg("Destination: ", packet.destination)
+        if self.address == "GroundStation" and packet.flags & REGISTERED:
+            self.registered(packet)
+        elif packet.destination != self.address:
             log.msg("uplinking data to cubesat")
             self.uplinkToCubeSat(packet)
-        elif packet.flags & REGISTERED:
-            self.registered(packet)
-        elif packet.flags & CHUNK:
-            self.receivedChunk(packet)
         else:
-            log.msg("Server said: %s" % packetstring)
+            log.msg("Server said: %s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 12587463" % packetstring)
     
     def register(self):
-        log.msg("registering")
-        packet = Packet("GroundStation", MASTER_ID, "GroundStation", MASTER_ID, REGISTER, None, HEADERS_SIZE)
+        packet = Packet(self.address, "Server", self.address, "Server", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
         
     def registered(self, packet):
-        log.msg("Whoa!!!!!")
-        self.id = packet.payload
+        self.address = packet.payload
         self.status = REGISTERED
         
     def deregister(self):
@@ -56,7 +51,6 @@ class TransportGSClientProtocol(protocol.Protocol):
         self.transport.write(packetstring)
     
     def uplinkToCubeSat(self, packet):
-        log.msg("sending data througn pipes")
         self.factory.fromGSClientToGSServer.put(packet)
 
 

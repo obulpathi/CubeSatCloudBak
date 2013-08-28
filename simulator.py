@@ -22,7 +22,7 @@ class MasterThread(threading.Thread):
         threading.Thread.__init__(self)
     def run(self):
         reactor.listenTCP(self.config.port, TransportMasterFactory())
-        
+
 class WorkerThread(threading.Thread):
     def __init__(self, mconfig, gsconfig, csconfig):
         self.mconfig  = mconfig
@@ -30,16 +30,17 @@ class WorkerThread(threading.Thread):
         self.csconfig = csconfig
         self.fromWorkerToCSClient = Queue()
         self.fromCSClientToWorker = Queue()
-        self.fromCSClientToCSServer = Queue()
-        self.fromCSServerToCSClient = Queue()
+        self.fromWorkerToCSServer = Queue()
+        self.fromCSServerToWorker = Queue()
         threading.Thread.__init__(self)
     def run(self):
-        reactor.connectTCP(self.mconfig.address, self.mconfig.port, 
-                            TransportWorkerFactory(self.fromWorkerToCSClient, self.fromCSClientToWorker))
+        reactor.connectTCP(self.mconfig.address, self.mconfig.port,
+                            TransportWorkerFactory(self.fromWorkerToCSClient, self.fromCSClientToWorker,
+                                                   self.fromWorkerToCSServer, self.fromCSServerToWorker))
         reactor.connectTCP(self.gsconfig.address, self.gsconfig.address, 
-                            TransportCSClientFactory(self.fromCSClientToCSServer, self.fromCSServerToCSClient))
+                            TransportCSClientFactory(self.fromWorkerToCSClient, self.fromCSClientToWorker))
         reactor.listenTCP(self.csconfig.port, 
-                            TransportCSServerFactory(self.fromCSClientToCSServer, self.fromCSServerToCSCleint))
+                            TransportCSServerFactory(self.fromWorkerToCSServer, self.fromCSServerToWorker))
 
 class GroundStationThread(threading.Thread):
     def __init__(self, config, sconfig):
@@ -78,23 +79,23 @@ if __name__ == "__main__":
     master = MasterThread(config.master)
     # create worker threads: mconfig, gsconfig, csconfig
     worker0 = WorkerThread(config.master, config.groundstation0, config.worker0)
-    worker1 = WorkerThread(config.master, config.groundstation1, config.worker1)
-    worker2 = WorkerThread(config.master, config.groundstation2, config.worker2)
+    #worker1 = WorkerThread(config.master, config.groundstation1, config.worker1)
+    #worker2 = WorkerThread(config.master, config.groundstation2, config.worker2)
     # create ground station threads
     gs0 = GroundStationThread(config.server, config.groundstation0)
-    gs1 = GroundStationThread(config.server, config.groundstation1)
-    gs2 = GroundStationThread(config.server, config.groundstation2)
+    #gs1 = GroundStationThread(config.server, config.groundstation1)
+    #gs2 = GroundStationThread(config.server, config.groundstation2)
     # create server thread
     server = ServerThread(config.server)
     # start the components
     server.start()
     gs0.start()
-    gs1.start()
-    gs2.start()
+    #gs1.start()
+    #gs2.start()
     master.start()
     worker0.start()
-    worker1.start()
-    worker2.start()
+    #worker1.start()
+    #worker2.start()
     # start the reactor
     reactor.run()
     # wait for all threads to finish

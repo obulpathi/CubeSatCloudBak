@@ -101,8 +101,8 @@ MAPREDUCE   = 6
 GET_CHUNK   = 7
 CHUNK       = 8
 COMMAND     = 9
-
-MISSION     = TORRENT
+GET_MISSION = 10
+MISSION     = 11
 
 # packet constants
 HEADERS_SIZE = 22

@@ -1,4 +1,5 @@
 import sys
+import yaml
 
 from twisted.python import log
 from twisted.internet import reactor
@@ -9,8 +10,13 @@ from cloud.transport.server import *
 
 # run server
 if __name__ == "__main__":
+    # read configuration
+    f = open('config.yaml')
+    configDict = yaml.load(f)
+    f.close()
+    config = Struct(configDict)
+    # setup logging
     # log.startLogging(open('/var/log/server.log', 'w'))
     log.startLogging(sys.stdout)
-    reactor.listenTCP(4000, TransportServerFactory())
-    log.msg("Server is up and running")
+    reactor.listenTCP(config.server.port, TransportServerFactory())
     reactor.run()

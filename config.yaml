@@ -6,6 +6,18 @@ server:
     address: localhost
     port: 4000
 
+groundstation:
+    address: localhost
+    port: 4004
+
+master:
+    address: localhost
+    port: 8000
+
+csserver:
+    address: localhost
+    port: 8008
+    
 groundstation0:
     address: localhost
     port: 4004
@@ -17,11 +29,7 @@ groundstation1:
 groundstation2:
     address: localhost
     port: 4006
-
-master:
-    address: localhost
-    port: 8000
-
+    
 worker0:
     address: localhost
     port: 8008

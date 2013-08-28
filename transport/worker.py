@@ -10,9 +10,11 @@ from cloud.common import *
 class TransportWorkerProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
-        self.id = None
-        self.waiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
-        self.waiter.start()
+        self.address = "Worker"
+        self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
+        self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getData)
+        self.cswaiter.start()
+        self.ccwaiter.start()
 
     def getData(self, data):
         log.msg(data)
@@ -24,44 +26,50 @@ class TransportWorkerProtocol(protocol.Protocol):
     
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
-        log.msg("data received")
-        # check if packet is for self
-        if self.id and packet.destination != self.id:
-            log.msg(packet.destination)
-            log.msg(self.id)
-            log.msg("forwarding data to child")
-            self.forwardToChild(packet)
-        elif packet.flags & REGISTERED:
+        if self.address == "Worker" and packet.flags & REGISTERED:
             self.registered(packet)
+        elif packet.destination == "Server":
+            self.forwardToServer(packetstring)
+        elif packet.destination != self.address:
+            self.forwardToChild(packet)
+        elif packet.flags == "NO_WORK":
+            self.noWork()
         elif packet.flags & CHUNK:
             self.receivedChunk(packet)
         else:
             log.msg("Server said: %s" % packetstring)
     
     def register(self):
-        log.msg("registering")
-        packet = Packet("sender", "receiver", "worker", "destination", REGISTER, None, HEADERS_SIZE)
+        packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
         
     def registered(self, packet):
-        log.msg("Whoa!!!!!")
-        self.id = packet.payload
+        self.address = packet.payload
         self.status = IDLE
-        self.requestChunk()
+        self.requestWork()
         
     def deregister(self):
         self.transport.loseConnection()
 
-    def forwardToServer(self, packet):
-        self.factory.fromWorkerToCSClient.put(packet)
+    def requestWork(self):
+        packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", None, HEADERS_SIZE)
+        data = pickle.dumps(packet)
+        self.transport.write(data)
+    
+    def noWork(self):
+        log.msg("No work")
+        task.deferLater(reactor, 1, self.requestWork)
+            
+    def forwardToServer(self, packetstring):
+        self.factory.fromWorkerToCSClient.put(packetstring)
             
     def forwardToChild(self, packet):
         self.factory.fromWorkerToCSServer.put(packet)
         
     def requestChunk(self):
         log.msg("requesting chunk")
-        packet = Packet(self.id, "receiver", self.id, "destination", GET_CHUNK, None, HEADERS_SIZE)
+        packet = Packet(self.id, "receiver", self.id, "Server", GET_CHUNK, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
     
@@ -73,14 +81,19 @@ class TransportWorkerProtocol(protocol.Protocol):
 
             
 class TransportWorkerFactory(protocol.ClientFactory):
-    def __init__(self, fromWorkerToCSClient, fromCSClientToWorker):
+    def __init__(self, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
         self.fromWorkerToCSClient = fromWorkerToCSClient
         self.fromCSClientToWorker = fromCSClientToWorker
+        self.fromWorkerToCSServer = fromWorkerToCSServer
+        self.fromCSServerToWorker = fromCSServerToWorker
+        
     def buildProtocol(self, addr):
         return TransportWorkerProtocol(self)
+        
     def clientConnectionFailed(self, connector, reason):
         log.msg("Connection failed.")
         reactor.stop()
+        
     def clientConnectionLost(self, connector, reason):
         log.msg("Connection lost.")
         reactor.stop()

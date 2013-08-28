@@ -10,44 +10,63 @@ from cloud.common import *
 class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
-        loopcall2 = task.LoopingCall(self.pollForDataFromCSClient)
-        loopcall2.start(0.1) # call every second
         
-    def pollForDataFromCSClient(self):
-        try:
-            packet = self.factory.fromCSClientToWorker.get(False)
-            if packet:
-                self.receivedCommand(packet)
-        except Exception:
-            pass
-                
     # received data      
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
-        if packet.flags & REGISTER:
+        if packet.flags == REGISTER:
             self.registerWorker(packet)
-        elif packet.flags & GET_CHUNK:
+        elif packet.flags == "STATE":
+            self.gotState(packet)
+        elif packet.flags == "GET_WORK":
+            self.sendWork(packet.source)
+        elif packet.flags == GET_CHUNK:
             self.transmitChunk(packet.source)
+        elif packet.flags == MISSION:
+            self.gotMission(packet.payload)
         else:
-            log("Unknown stuff")
+            log.msg(packet)
+            log.msg("Unknown stuff")
     
     # register worker
     def registerWorker(self, packet):
-        log.msg("registered slave")
+        log.msg("registered worker")
         self.factory.registrationCount = self.factory.registrationCount + 1
-        packet = Packet(self.factory.id, "receiver", self.factory.id, self.factory.registrationCount, REGISTERED, \
-                        self.factory.registrationCount, HEADERS_SIZE)
+        packet = Packet(self.factory.address, self.factory.registrationCount, \
+                        self.factory.address, self.factory.registrationCount, \
+                        REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.transport.write(packetstring)
+        if self.factory.registrationCount == 1:
+            task.deferLater(reactor, 0.1, self.getMission)
+    
+    # get mission
+    def getMission(self):
+        packet = Packet(self.factory.address, "Receiver", self.factory.address, "Server", \
+                        GET_MISSION, None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
     
+    # got mission
+    def gotMission(self, mission):
+        self.factory.mission = mission
+    
+    # send work to workers   
+    def sendWork(self, destination):
+        if not self.factory.mission:
+            packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
+                            "NO_WORK", None, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.transport.write(packetstring)
+        
     # transmit chunk
     def transmitChunk(self, destination):
         log.msg("Master got request for chunk")
         image = open("chunk.jpg", "rb")
         data = image.read()
         chunk = Chunk("chunkid", "size", "box", data)
-        packet = Packet(self.factory.id, "receiver", self.factory.id, destination, CHUNK, \
-                        chunk, HEADERS_SIZE)
+        packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
+                        CHUNK, chunk, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
 
@@ -66,11 +85,11 @@ class TransportMasterProtocol(protocol.Protocol):
 
 # Master factory
 class TransportMasterFactory(protocol.Factory):
-    def __init__(self, fromWorkerToCSClient, fromCSClientToWorker):
-        self.id = 0
+    def __init__(self):
+        self.status = "START"
+        self.address = "Master"
+        self.mission = None
         self.registrationCount = 0
-        self.fromWorkerToCSClient = fromWorkerToCSClient
-        self.fromCSClientToWorker = fromCSClientToWorker
         
     def buildProtocol(self, addr):
         log.msg("build protocol called")
