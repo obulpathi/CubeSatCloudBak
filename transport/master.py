@@ -79,7 +79,7 @@ class TransportMasterProtocol(protocol.Protocol):
             packetstring = pickle.dumps(packet)
             self.transport.write(packetstring)
         else:
-            log.msg("HAS work ... >>>>>>>>>>>>>>>>>>>>. 
+            log.msg("HAS work ... >>>>>>>>>>>>>>>>>>>>. ")
         
     # transmit chunk
     def transmitChunk(self, destination):
@@ -130,15 +130,15 @@ class TransportMasterFactory(protocol.Factory):
     def execute(self, mission):
         log.msg("Received mission: %s" % mission)
         if mission == SENSE:
-            sense(mission)
-        elif mission == CDFS:
-            self.cdfs("image.jpg)
-        elif mission == MAPREDUCE:
-            log.msg("MapReduce command")
-        elif mission == TORRENT:
-            log.msg("TORRENT command")
+            self.sense(mission)
+        elif mission == STORE:
+            self.store("image.jpg")
+        elif mission == PROCESS:
+            self.process("image.jpg")
+        elif mission == DOWNLINK:
+            self.downlink("image.jpg")
         else:
-            log.msg("ERROR: Unknown command")
+            log.msg("ERROR: Unknown mission: %s" % mission)
 
     # simulate sensing
     def sense(self, mission):
@@ -154,11 +154,14 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("Set current file to filename")
         log.msg("split it into chunks and create metadata for this file in files data structure")
         log.msg("start executing the mission")
+        self.getMission()
     
     # process the given file and downlink
     def process(self, filename):
-        pass
+        log.msg("MapReduce mission")
+        self.getMission()
     
     # downlink the given file
     def downlink(self, filename):
-        pass
+        log.msg("Torrent mission")
+        self.getMission()

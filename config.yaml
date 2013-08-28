@@ -1,6 +1,10 @@
 # Configuration
 
-mission: TORRENT
+missions:
+    - SENSE
+    - STORE
+    - PROCESS
+    - DOWNLINK
 
 server:
     address: localhost

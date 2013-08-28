@@ -22,7 +22,7 @@ class TransportServerProtocol(protocol.Protocol):
         elif packet.flags == UNREGISTER:
             self.unregister(packet)
         elif packet.flags == GET_MISSION:
-            self.sendMission(packet.sender)
+            self.getMission(packet.sender)
         elif packet.flags == CHUNK:
             self.receiveChunk(packet)
         else:
@@ -50,19 +50,28 @@ class TransportServerProtocol(protocol.Protocol):
         packetstring = pickle.dumps(new_packet)
         self.transport.write(packetstring)
 
-    # send mission to ground station
-    def sendMission(self, receiver):
-        log.msg("Sending mission >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
+    # get mission to ground station
+    def getMission(self, receiver):
+        mission = self.factory.getMission()
         packet = Packet(self.factory.address, receiver, self.factory.address, "Master", MISSION, \
-            TORRENT, HEADERS_SIZE)
+            mission, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
 
 # Server factory
 class TransportServerFactory(protocol.Factory):
-    def __init__(self):
+    def __init__(self, missions):
         self.address = "Server"
+        self.missions = missions
         self.registrationCount = 100
         
     def buildProtocol(self, addr):
         return TransportServerProtocol(self)
+    
+    def getMission(self):
+        mission = None
+        if self.missions:
+            mission = self.missions[0]
+            self.missions = self.missions[1:]
+            log.msg("Sending mission: %s" % mission)
+        return mission

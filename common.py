@@ -103,6 +103,10 @@ CHUNK       = 8
 COMMAND     = 9
 GET_MISSION = 10
 MISSION     = 11
+SENSE       = "SENSE"
+STORE       = "STORE"
+PROCESS     = "PROCESS"
+DOWNLINK    = "DOWNLINK"
 
 # packet constants
 HEADERS_SIZE = 22
