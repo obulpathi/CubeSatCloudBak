@@ -1,3 +1,4 @@
+import os
 import pickle
 
 from twisted.python import log
@@ -15,6 +16,7 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getData)
         self.cswaiter.start()
         self.ccwaiter.start()
+        self.filepath = "/home/obulpathi/phd/cloud/data/"
 
     def getData(self, data):
         self.transport.write(data)
@@ -33,6 +35,8 @@ class TransportWorkerProtocol(protocol.Protocol):
             self.forwardToChild(packet)
         elif packet.flags == "NO_WORK":
             self.noWork()
+        elif packet.flags == "WORK":
+            self.gotWork(packet.payload)
         elif packet.flags & CHUNK:
             self.receivedChunk(packet)
         else:
@@ -45,21 +49,46 @@ class TransportWorkerProtocol(protocol.Protocol):
         
     def registered(self, packet):
         self.address = packet.payload
+        self.filepath = self.filepath + str(self.address) + "/"
+        try:
+            os.mkdir(self.filepath)
+        except OSError:
+            pass
         self.status = IDLE
-        self.requestWork()
+        self.getWork()
         
     def deregister(self):
         self.transport.loseConnection()
 
-    def requestWork(self):
+    def getWork(self):
         packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
     
     def noWork(self):
         log.msg("No work")
-        task.deferLater(reactor, 1, self.requestWork)
-            
+        task.deferLater(reactor, 1, self.getWork)
+    
+    def gotWork(self, work):
+        if work.job == "STORE":
+            self.store(work.filename, work.payload)
+        elif work.jpb == "PROCESS":
+            log.msg("TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        elif work.job == "DOWNLINK":
+            log.msg("TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>")
+        else:
+            log.msg("Unkown work")
+            log.msg(work)
+
+    def store(self, filename, data):
+        # modify the filename here
+        log.msg(self.filepath)
+        log.msg(filename)
+        chunk = open(self.filepath + filename, "w")
+        chunk.write(data)
+        chunk.close()
+        self.getWork()
+        
     def forwardToServer(self, packetstring):
         self.factory.fromWorkerToCSClient.put(packetstring)
             

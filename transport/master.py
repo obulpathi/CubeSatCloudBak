@@ -1,4 +1,7 @@
+import os
+import math
 import pickle
+from PIL import Image
 
 from twisted.python import log
 from twisted.internet import task
@@ -8,25 +11,32 @@ from twisted.internet import protocol
 from cloud.common import *
 
 # split the remote sensing data into chunks
-def splitImageIntoChunks(self, filename):
-    sensor_data = Image.open(filename)
-    width = sensor_data.size[0]
-    height = sensor_data.size[1]
+def splitImageIntoChunks(filename):
+    metadata = []
+    image = Image.open(filename)
+    width = image.size[0]
+    height = image.size[1]
+    # create data subdirectory for this file
+    directory = "/home/obulpathi/phd/cloud/data/master/" + filename.split(".")[0]
+    os.mkdir(directory)
+    count = 0 # chunk counter
     for y in range(0, int(math.ceil(float(height)/chunk_y))):
         for x in range(0, int(math.ceil(float(width)/chunk_x))):
             left = x * chunk_x
             top = y * chunk_y
             right = min((x+1) * chunk_x, width)
             bottom = min((y+1) * chunk_y, height)
-            box = (left, top, right, bottom)
-            chunk = sensor_data.crop(box)
-            filename = "chunks/chunk:" + str(y) + "x" + str(x) + ".jpg"
-            chunk.save(filename)
-            chunkid = str(uuid.uuid4())
-            size = os.stat(filename).st_size
-            self.chunks.append(Chunk(chunkid, filename, size, box))
-            print self.chunks[-1]
-            
+            # box = (left, top, right, bottom)
+            data = image.crop((left, top, right, bottom))
+            chunkname = directory + "/" + str(count) + ".jpg"
+            data.save(chunkname)
+            size = os.stat(chunkname).st_size
+            box = Box(left, top, right, bottom)
+            chunk = Chunk(chunkname, size, box)
+            metadata.append(chunk)
+            count = count + 1
+    return metadata
+
 class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
@@ -40,7 +50,7 @@ class TransportMasterProtocol(protocol.Protocol):
         elif packet.flags == "STATE":
             self.gotState(packet)
         elif packet.flags == "GET_WORK":
-            self.sendWork(packet.source)
+            self.getWork(packet.source)
         elif packet.flags == GET_CHUNK:
             self.transmitChunk(packet.source)
         elif packet.flags == MISSION:
@@ -71,15 +81,27 @@ class TransportMasterProtocol(protocol.Protocol):
     def gotMission(self, mission):
         self.factory.gotMission(mission)
         
-    # send work to workers   
-    def sendWork(self, destination):
-        if not self.factory.mission:
-            packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
-                            "NO_WORK", None, HEADERS_SIZE)
-            packetstring = pickle.dumps(packet)
-            self.transport.write(packetstring)
+    # get work to workers   
+    def getWork(self, destination):
+        work = self.factory.getWork(destination)
+        if not work:
+            self.noWork(destination)
         else:
-            log.msg("HAS work ... >>>>>>>>>>>>>>>>>>>>. ")
+            self.sendWork(destination, work)
+            
+    # send no work message
+    def noWork(self, destination):
+        packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
+                        "NO_WORK", None, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.transport.write(packetstring)
+
+    # send work
+    def sendWork(self, destination, work):
+        packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
+                        "WORK", work, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.transport.write(packetstring)
         
     # transmit chunk
     def transmitChunk(self, destination):
@@ -101,7 +123,11 @@ class TransportMasterFactory(protocol.Factory):
         self.mission = None
         self.transports = []
         self.registrationCount = 0
-        self.files = None
+        self.filepath = None
+        try:
+            os.mkdir("/home/obulpathi/phd/cloud/data/master")
+        except OSError:
+            pass
         task.deferLater(reactor, 1, self.getMission)
         
     def buildProtocol(self, addr):
@@ -121,11 +147,38 @@ class TransportMasterFactory(protocol.Factory):
     
     def gotMission(self, mission):
         if mission:
-            self.mission = mission
             self.execute(mission)
         else:
             task.deferLater(reactor, 1, self.getMission)
 
+    def getWork(self, worker):
+        if not self.mission:
+            return None
+        if self.mission.operation == SENSE:
+            return None
+        elif self.mission.operation == STORE:
+            return self.getStoreWork(worker)
+        elif self.mission.operation == PROCESS:
+            return self.getProcessWork(worker)
+        elif self.mission.operation == DOWNLINK:
+            return self.getDownlinkWork(worker)
+        else:
+            log.msg("ERROR: Unknown mission: %s" % mission)
+            return None
+    
+    def getStoreWork(self, worker):
+        for chunk in self.chunks:
+            if chunk.status == "UNASSIGNED":
+                chunk.worker = worker
+                chunk.status = "ASSIGNED"
+                data = open(chunk.name).read()
+                work = Work("STORE", os.path.split(chunk.name)[1], data)
+                log.msg(chunk)
+                return work
+        # no work: check if mission is complete
+        self.isMissionComplete()
+        
+        
     def execute(self, mission):
         log.msg("Received mission: %s" % mission)
         if mission.operation == SENSE:
@@ -143,7 +196,7 @@ class TransportMasterFactory(protocol.Factory):
     def sense(self, mission):
         log.msg("Executing sensing mission: ")
         log.msg(mission)
-        source = open("sensor_data.jpg", "r")
+        source = open("data.jpg", "r")
         data = source.read()
         source.close() 
         sink = open(mission.filename, "w")
@@ -155,18 +208,51 @@ class TransportMasterFactory(protocol.Factory):
     
     # store the given image on cdfs
     def store(self, mission):
+        log.msg("Executing sensing mission: ")
         log.msg(mission)
-        log.msg("split the file into chunks and create metadata for this file in files data structure")
-        self.getMission()
-    
+        # split the image into chunks
+        self.chunks = splitImageIntoChunks(mission.filename)
+        # mission is ready to be executed
+        self.mission = mission
+
     # process the given file and downlink
     def process(self, mission):
         log.msg(mission)
         log.msg("MapReduce mission")
         self.getMission()
-    
+
     # downlink the given file
     def downlink(self, mission):
         log.msg(mission)
         log.msg("Torrent mission")
+        self.getMission()
+
+    # check if the current mission is complete
+    def isMissionComplete(self):
+        if self.mission.operation == SENSE:
+            return self.isSenseMissionComplete()
+        elif self.mission.operation == STORE:
+            return self.isStoreMissionComplete()
+        elif self.mission.operation == PROCESS:
+            return self.isProcessMissionComplete()
+        elif mission.operation == DOWNLINK:
+            return self.isDownlinkMissionComplete()
+
+    def isSenseMissionComplete(self):
+        return False
+        
+    def isStoreMissionComplete(self):
+        for chunk in self.chunks:
+            if chunk.status == "UNASSIGNED":
+                return False
+        return True
+    
+    def isProcessMissionComplete(self):
+        return False
+    
+    def isDownlinkMissionComplete(self):
+        return False
+    
+    def missionComplete(self):
+        self.mission = None
         self.getMission()

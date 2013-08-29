@@ -79,16 +79,30 @@ MapReduce = namedtuple('MapReduce', 'payload size chunks')
 # subsystems
 Power = namedtuple('Power', 'processor memory nic transciever eps maintainance')
 
+Box = namedtuple('Box', 'left top right bottom')
+
+"""
+class Box(object):
+    def __init__(self, left, top, right, bottom)
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
+"""
+
+Work = namedtuple('Work', 'job filename payload')
+
 class Chunk(object):
-    def __init__(self, chunkid, size, box, data):
-        self.chunkid = chunkid
+    def __init__(self, name, size, box):
+        self.name = name
         self.size = size
         self.box = box
-        self.data = data
-        
+        self.status = "UNASSIGNED"
+        self.worker = None
+
     def __repr__(self):
-        return "ID: " + str(self.chunkid) + ", Size: " + str(self.size) + \
-               ", Box: " + str(self.box) + ", Data: DATA"
+        return "Name: " + str(self.name) + ", Size: " + str(self.size) + \
+               ", Box: " + str(self.box) + ", Status: " + str(self.status) + ", Worker: " + str(self.worker)
 
 # Packet flags
 NO_FLAG     = 0
