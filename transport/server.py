@@ -60,14 +60,26 @@ class TransportServerProtocol(protocol.Protocol):
 
 # Server factory
 class TransportServerFactory(protocol.Factory):
-    def __init__(self, missions):
+    def __init__(self, commands):
         self.address = "Server"
-        self.missions = missions
+        self.buildMissions(commands)
         self.registrationCount = 100
-        
+       
     def buildProtocol(self, addr):
         return TransportServerProtocol(self)
     
+    def buildMissions(self, commands):
+        self.missions = []
+        for command in commands:
+            log.msg(command)
+            mission = Mission()
+            mission.operation = command.operation
+            mission.filename = command.filename
+            if command.operation == SENSE:
+                mission.lat = command.lat
+                mission.lon = command.lon
+            self.missions.append(mission)
+        
     def getMission(self):
         mission = None
         if self.missions:

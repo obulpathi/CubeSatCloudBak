@@ -8,7 +8,7 @@ from twisted.internet import protocol
 from cloud.common import *
 
 # split the remote sensing data into chunks
-def createChunks(self, filename):
+def splitImageIntoChunks(self, filename):
     sensor_data = Image.open(filename)
     width = sensor_data.size[0]
     height = sensor_data.size[1]
@@ -99,7 +99,6 @@ class TransportMasterFactory(protocol.Factory):
         self.status = "START"
         self.address = "Master"
         self.mission = None
-        self.filename = None
         self.transports = []
         self.registrationCount = 0
         self.files = None
@@ -129,39 +128,45 @@ class TransportMasterFactory(protocol.Factory):
 
     def execute(self, mission):
         log.msg("Received mission: %s" % mission)
-        if mission == SENSE:
+        if mission.operation == SENSE:
             self.sense(mission)
-        elif mission == STORE:
-            self.store("image.jpg")
-        elif mission == PROCESS:
-            self.process("image.jpg")
-        elif mission == DOWNLINK:
-            self.downlink("image.jpg")
+        elif mission.operation == STORE:
+            self.store(mission)
+        elif mission.operation == PROCESS:
+            self.process(mission)
+        elif mission.operation == DOWNLINK:
+            self.downlink(mission)
         else:
             log.msg("ERROR: Unknown mission: %s" % mission)
 
     # simulate sensing
     def sense(self, mission):
-        log.msg(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> add image.jpg to files list &^%&$%$%$&&&&&&&&&&&&&&&&&&&&&&&&&& ")
-        log.msg("image.jpg")
+        log.msg("Executing sensing mission: ")
+        log.msg(mission)
+        source = open("sensor_data.jpg", "r")
+        data = source.read()
+        source.close() 
+        sink = open(mission.filename, "w")
+        sink.write(data)
+        sink.close()
         self.mission = None
+        # get next mission
         self.getMission()
-        return
     
     # store the given image on cdfs
-    def store(self, filename):
-        log.msg("CDFS mission")
-        log.msg("Set current file to filename")
-        log.msg("split it into chunks and create metadata for this file in files data structure")
-        log.msg("start executing the mission")
+    def store(self, mission):
+        log.msg(mission)
+        log.msg("split the file into chunks and create metadata for this file in files data structure")
         self.getMission()
     
     # process the given file and downlink
-    def process(self, filename):
+    def process(self, mission):
+        log.msg(mission)
         log.msg("MapReduce mission")
         self.getMission()
     
     # downlink the given file
-    def downlink(self, filename):
+    def downlink(self, mission):
+        log.msg(mission)
         log.msg("Torrent mission")
         self.getMission()

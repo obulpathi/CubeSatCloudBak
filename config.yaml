@@ -1,10 +1,10 @@
 # Configuration
 
-missions:
-    - SENSE
-    - STORE
-    - PROCESS
-    - DOWNLINK
+commands:
+    - {operation: SENSE, filename: image.jpg, lat: lat, lon: lon}
+    - {operation: STORE, filename: image.jpg}
+    - {operation: PROCESS, filename: image.jpg}
+    - {operation: DOWNLINK, filename: image.jpg}
 
 server:
     address: localhost

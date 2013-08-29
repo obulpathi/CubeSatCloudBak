@@ -147,6 +147,15 @@ class Packet(object):
                 str(self.source) + ", Destination: " + str(self.destination) + flagstring + \
                 ", Payload: " + str(self.payload) + ", Size: " + str(self.size)
 
+class Mission(object):
+    def __init__(self):
+        pass  
+    def __print__(self):
+        if self.mission == SENSE:
+            return "Mission: " + self.mission + ", filename: " + self.filename + ", lat: " + self.lat + ", lon: " + self.lon
+        else:
+            return "Mission: " + self.mission + ", filename: " + self.filename
+        
 class WaitForData(threading.Thread):
     def __init__(self, queue, callback):
         self.queue = queue
