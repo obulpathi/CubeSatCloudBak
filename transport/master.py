@@ -1,6 +1,7 @@
 import os
 import math
 import pickle
+from uuid import uuid4
 from PIL import Image
 
 from twisted.python import log
@@ -32,7 +33,7 @@ def splitImageIntoChunks(filename):
             data.save(chunkname)
             size = os.stat(chunkname).st_size
             box = Box(left, top, right, bottom)
-            chunk = Chunk(chunkname, size, box)
+            chunk = Chunk(uuid4(), chunkname, size, box)
             metadata.append(chunk)
             count = count + 1
     return metadata
@@ -50,7 +51,7 @@ class TransportMasterProtocol(protocol.Protocol):
         elif packet.flags == "STATE":
             self.gotState(packet)
         elif packet.flags == "GET_WORK":
-            self.getWork(packet.source)
+            self.getWork(packet.source, packet.payload)
         elif packet.flags == GET_CHUNK:
             self.transmitChunk(packet.source)
         elif packet.flags == MISSION:
@@ -81,13 +82,13 @@ class TransportMasterProtocol(protocol.Protocol):
     def gotMission(self, mission):
         self.factory.gotMission(mission)
         
-    # get work to workers   
-    def getWork(self, destination):
-        work = self.factory.getWork(destination)
+    # get work to workers
+    def getWork(self, worker, finishedWork = None):
+        work = self.factory.getWork(worker, finishedWork)
         if not work:
-            self.noWork(destination)
+            self.noWork(worker)
         else:
-            self.sendWork(destination, work)
+            self.sendWork(worker, work)
             
     # send no work message
     def noWork(self, destination):
@@ -151,7 +152,9 @@ class TransportMasterFactory(protocol.Factory):
         else:
             task.deferLater(reactor, 1, self.getMission)
 
-    def getWork(self, worker):
+    def getWork(self, worker, oldWork = None):
+        if oldWork:
+            self.finishedWork(oldWork)
         if not self.mission:
             return None
         if self.mission.operation == SENSE:
@@ -172,12 +175,20 @@ class TransportMasterFactory(protocol.Factory):
                 chunk.worker = worker
                 chunk.status = "ASSIGNED"
                 data = open(chunk.name).read()
-                work = Work("STORE", os.path.split(chunk.name)[1], data)
+                work = Work(chunk.uuid, "STORE", os.path.split(chunk.name)[1], data)
                 log.msg(chunk)
                 return work
         # no work: check if mission is complete
-        self.isMissionComplete()
-        
+        if self.isMissionComplete():
+            log.msg("Mission Accomplished")
+            self.getMission()
+
+    def finishedWork(self, work):
+        for chunk in self.chunks:
+            if chunk.uuid == work.uuid:
+                log.msg(chunk.uuid)
+                log.msg(work.uuid)
+                chunk.status = "FINISHED" 
         
     def execute(self, mission):
         log.msg("Received mission: %s" % mission)
@@ -243,7 +254,7 @@ class TransportMasterFactory(protocol.Factory):
         
     def isStoreMissionComplete(self):
         for chunk in self.chunks:
-            if chunk.status == "UNASSIGNED":
+            if chunk.status != "FINISHED":
                 return False
         return True
     

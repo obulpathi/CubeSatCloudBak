@@ -55,40 +55,40 @@ class TransportWorkerProtocol(protocol.Protocol):
         except OSError:
             pass
         self.status = IDLE
-        self.getWork()
+        self.getWork(None)
         
     def deregister(self):
         self.transport.loseConnection()
 
-    def getWork(self):
-        packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", None, HEADERS_SIZE)
+    def getWork(self, work):
+        packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", work, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
     
     def noWork(self):
         log.msg("No work")
-        task.deferLater(reactor, 1, self.getWork)
+        task.deferLater(reactor, 1, self.getWork, None)
     
     def gotWork(self, work):
         if work.job == "STORE":
-            self.store(work.filename, work.payload)
+            self.store(work)
         elif work.jpb == "PROCESS":
-            log.msg("TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            log.msg("PROCESS TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>>")
         elif work.job == "DOWNLINK":
-            log.msg("TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>")
+            log.msg("DOWNLINK TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>")
         else:
             log.msg("Unkown work")
             log.msg(work)
 
-    def store(self, filename, data):
+    def store(self, work):
         # modify the filename here
         log.msg(self.filepath)
-        log.msg(filename)
-        chunk = open(self.filepath + filename, "w")
-        chunk.write(data)
+        log.msg(work.filename)
+        chunk = open(self.filepath + work.filename, "w")
+        chunk.write(work.payload)
         chunk.close()
-        self.getWork()
-        
+        self.getWork(Work(work.uuid, work.job, work.filename, None))
+            
     def forwardToServer(self, packetstring):
         self.factory.fromWorkerToCSClient.put(packetstring)
             
