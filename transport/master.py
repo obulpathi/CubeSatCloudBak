@@ -13,7 +13,7 @@ from cloud.common import *
 
 # split the remote sensing data into chunks
 def splitImageIntoChunks(filename):
-    metadata = []
+    chunks = {}
     image = Image.open(filename)
     width = image.size[0]
     height = image.size[1]
@@ -34,9 +34,9 @@ def splitImageIntoChunks(filename):
             size = os.stat(chunkname).st_size
             box = Box(left, top, right, bottom)
             chunk = Chunk(uuid4(), chunkname, size, box)
-            metadata.append(chunk)
+            chunks[chunk.uuid] = chunk
             count = count + 1
-    return metadata
+    return chunks
 
 class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
@@ -125,6 +125,7 @@ class TransportMasterFactory(protocol.Factory):
         self.transports = []
         self.registrationCount = 0
         self.filepath = None
+        self.metadata = {}
         try:
             os.mkdir("/home/obulpathi/phd/cloud/data/master")
         except OSError:
@@ -147,6 +148,8 @@ class TransportMasterFactory(protocol.Factory):
         task.deferLater(reactor, 1, self.getMission)
     
     def gotMission(self, mission):
+        log.msg("Got mission")
+        log.msg(mission)
         if mission:
             self.execute(mission)
         else:
@@ -170,7 +173,7 @@ class TransportMasterFactory(protocol.Factory):
             return None
     
     def getStoreWork(self, worker):
-        for chunk in self.chunks:
+        for chunk in self.chunks.itervalues():
             if chunk.status == "UNASSIGNED":
                 chunk.worker = worker
                 chunk.status = "ASSIGNED"
@@ -183,12 +186,36 @@ class TransportMasterFactory(protocol.Factory):
             log.msg("Mission Accomplished")
             self.getMission()
 
-    def finishedWork(self, work):
+    def getDownlinkWork(self, worker):
         for chunk in self.chunks:
-            if chunk.uuid == work.uuid:
-                log.msg(chunk.uuid)
-                log.msg(work.uuid)
-                chunk.status = "FINISHED" 
+            if chunk.worker == worker and chunk.status == "UNASSIGNED":
+                chunk.status = "ASSIGNED"
+                work = Work(chunk.uuid, "DOWNLINK", os.path.split(chunk.name)[1], None)
+                log.msg(chunk)
+                return work
+        # no work: check if mission is complete
+        if self.isMissionComplete():
+            log.msg("Mission Accomplished")
+            self.getMission()
+        
+    def finishedWork(self, work):
+        if self.mission.operation == STORE:
+            self.finishedStoreWork(work)
+        elif self.mission == PROCESS:
+            self.finishedProcessWork(work)
+        elif self.mission == DOWNLINK:
+            self.finishedDownlinkWork(work)
+        else:
+            log.msg("ERROR: Unknown mission")
+            log.msg(work)
+
+    def finishedStoreWork(self, work):
+        chunk = self.chunks[work.uuid]
+        del self.chunks[work.uuid]
+        if self.metadata.get(chunk.worker):
+            self.metadata[chunk.worker].append(chunk)
+        else:
+            self.metadata[chunk.worker] = [chunk]
         
     def execute(self, mission):
         log.msg("Received mission: %s" % mission)
@@ -219,7 +246,7 @@ class TransportMasterFactory(protocol.Factory):
     
     # store the given image on cdfs
     def store(self, mission):
-        log.msg("Executing sensing mission: ")
+        log.msg("Executing storing mission: ")
         log.msg(mission)
         # split the image into chunks
         self.chunks = splitImageIntoChunks(mission.filename)
@@ -235,8 +262,7 @@ class TransportMasterFactory(protocol.Factory):
     # downlink the given file
     def downlink(self, mission):
         log.msg(mission)
-        log.msg("Torrent mission")
-        self.getMission()
+        self.mission = mission
 
     # check if the current mission is complete
     def isMissionComplete(self):
@@ -253,9 +279,8 @@ class TransportMasterFactory(protocol.Factory):
         return False
         
     def isStoreMissionComplete(self):
-        for chunk in self.chunks:
-            if chunk.status != "FINISHED":
-                return False
+        if self.chunks:
+            return False
         return True
     
     def isProcessMissionComplete(self):

@@ -72,9 +72,9 @@ Fileops = namedtuple('Fileops', 'ID filename mode data')
 Configuration = namedtuple('Configuration', 'processor memory battery nic transciever power location tle')
 
 # missions
-Mission = namedtuple('Mission', 'mission')
-Torrent = namedtuple('Torrent', 'payload size chunks')
-MapReduce = namedtuple('MapReduce', 'payload size chunks')
+#Mission = namedtuple('Mission', 'mission')
+#Torrent = namedtuple('Torrent', 'payload size chunks')
+#MapReduce = namedtuple('MapReduce', 'payload size chunks')
 
 # subsystems
 Power = namedtuple('Power', 'processor memory nic transciever eps maintainance')
@@ -165,11 +165,12 @@ class Packet(object):
 class Mission(object):
     def __init__(self):
         pass  
-    def __print__(self):
-        if self.mission == SENSE:
-            return "Mission: " + self.mission + ", filename: " + self.filename + ", lat: " + self.lat + ", lon: " + self.lon
+    def __repr__(self):
+        if self.operation == SENSE:
+            return "Mission: " + self.operation + ", filename: " + self.filename + ", UUID: " + str(self.uuid) + \
+                   ", lat: " + self.lat + ", lon: " + self.lon
         else:
-            return "Mission: " + self.mission + ", filename: " + self.filename
+            return "Mission: " + self.operation + ", filename: " + self.filename + ", UUID: " + str(self.uuid)
         
 class WaitForData(threading.Thread):
     def __init__(self, queue, callback):

@@ -1,5 +1,6 @@
 import pickle
 from time import sleep
+from uuid import uuid4
 
 from twisted.python import log
 from twisted.internet import reactor
@@ -75,6 +76,7 @@ class TransportServerFactory(protocol.Factory):
             mission = Mission()
             mission.operation = command.operation
             mission.filename = command.filename
+            mission.uuid = uuid4()
             if command.operation == SENSE:
                 mission.lat = command.lat
                 mission.lon = command.lon
