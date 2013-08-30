@@ -156,8 +156,9 @@ class TransportMasterFactory(protocol.Factory):
             task.deferLater(reactor, 1, self.getMission)
 
     def getWork(self, worker, oldWork = None):
+        log.msg("Work requested by worker")
         if oldWork:
-            self.finishedWork(oldWork)
+            self.finishedWork(oldWork, worker)
         if not self.mission:
             return None
         if self.mission.operation == SENSE:
@@ -173,6 +174,7 @@ class TransportMasterFactory(protocol.Factory):
             return None
     
     def getStoreWork(self, worker):
+        log.msg("Store work requested by worker")
         for chunk in self.chunks.itervalues():
             if chunk.status == "UNASSIGNED":
                 chunk.worker = worker
@@ -181,30 +183,30 @@ class TransportMasterFactory(protocol.Factory):
                 work = Work(chunk.uuid, "STORE", os.path.split(chunk.name)[1], data)
                 log.msg(chunk)
                 return work
-        # no work: check if mission is complete
-        if self.isMissionComplete():
-            log.msg("Mission Accomplished")
-            self.getMission()
+        # no work: set a callback to check if mission is complete and return
+        task.deferLater(reactor, 0.1, self.isMissionComplete)
 
     def getDownlinkWork(self, worker):
-        for chunk in self.chunks:
-            if chunk.worker == worker and chunk.status == "UNASSIGNED":
+        log.msg("Downlink work requested by worker")
+        chunks = self.metadata[worker]
+        for chunk in chunks:
+            if chunk.status == "UNASSIGNED":
                 chunk.status = "ASSIGNED"
                 work = Work(chunk.uuid, "DOWNLINK", os.path.split(chunk.name)[1], None)
-                log.msg(chunk)
+                log.msg(work)
                 return work
         # no work: check if mission is complete
         if self.isMissionComplete():
             log.msg("Mission Accomplished")
             self.getMission()
         
-    def finishedWork(self, work):
+    def finishedWork(self, work, worker):
         if self.mission.operation == STORE:
             self.finishedStoreWork(work)
-        elif self.mission == PROCESS:
+        elif self.mission.operation == PROCESS:
             self.finishedProcessWork(work)
-        elif self.mission == DOWNLINK:
-            self.finishedDownlinkWork(work)
+        elif self.mission.operation == DOWNLINK:
+            self.finishedDownlinkWork(work, worker)
         else:
             log.msg("ERROR: Unknown mission")
             log.msg(work)
@@ -216,7 +218,15 @@ class TransportMasterFactory(protocol.Factory):
             self.metadata[chunk.worker].append(chunk)
         else:
             self.metadata[chunk.worker] = [chunk]
-        
+    
+    def finishedDownlinkWork(self, work, worker):
+        chunks = self.metadata[worker]
+        for chunk in chunks:
+            if chunk.uuid == work.uuid:
+                chunk.status = "FINISHED"
+                return
+        log.msg("ERROR: Got unknown work item")
+                        
     def execute(self, mission):
         log.msg("Received mission: %s" % mission)
         if mission.operation == SENSE:
@@ -233,7 +243,6 @@ class TransportMasterFactory(protocol.Factory):
     # simulate sensing
     def sense(self, mission):
         log.msg("Executing sensing mission: ")
-        log.msg(mission)
         source = open("data.jpg", "r")
         data = source.read()
         source.close() 
@@ -247,7 +256,6 @@ class TransportMasterFactory(protocol.Factory):
     # store the given image on cdfs
     def store(self, mission):
         log.msg("Executing storing mission: ")
-        log.msg(mission)
         # split the image into chunks
         self.chunks = splitImageIntoChunks(mission.filename)
         # mission is ready to be executed
@@ -255,24 +263,33 @@ class TransportMasterFactory(protocol.Factory):
 
     # process the given file and downlink
     def process(self, mission):
-        log.msg(mission)
         log.msg("MapReduce mission")
         self.getMission()
 
     # downlink the given file
     def downlink(self, mission):
-        log.msg(mission)
+        log.msg("DOWNLINKINGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG >>>>>>>>>>>>>>>>>>>>>>>>>>>> ")
+        self.loadMetadata(None)
         self.mission = mission
 
+    # load the metadata for the file
+    def loadMetadata(self, filename):
+        for chunks in self.metadata.itervalues():
+            for chunk in chunks:
+                chunk.status = "UNASSIGNED"
+        
     # check if the current mission is complete
+    # and if it is, get a new misison
     def isMissionComplete(self):
         if self.mission.operation == SENSE:
             return self.isSenseMissionComplete()
         elif self.mission.operation == STORE:
-            return self.isStoreMissionComplete()
+            if self.isStoreMissionComplete():
+                log.msg("Mission Accomplished")
+                self.getMission()
         elif self.mission.operation == PROCESS:
             return self.isProcessMissionComplete()
-        elif mission.operation == DOWNLINK:
+        elif self.mission.operation == DOWNLINK:
             return self.isDownlinkMissionComplete()
 
     def isSenseMissionComplete(self):
@@ -287,7 +304,11 @@ class TransportMasterFactory(protocol.Factory):
         return False
     
     def isDownlinkMissionComplete(self):
-        return False
+        for chunks in self.metadata.itervalues():
+            for chunk in chunks:
+                if chunk.status != "FINISHED":
+                    return False
+        return True
     
     def missionComplete(self):
         self.mission = None

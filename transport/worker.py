@@ -72,40 +72,36 @@ class TransportWorkerProtocol(protocol.Protocol):
     def gotWork(self, work):
         if work.job == "STORE":
             self.store(work)
-        elif work.jpb == "PROCESS":
+        elif work.job == "PROCESS":
             log.msg("PROCESS TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>>")
         elif work.job == "DOWNLINK":
-            log.msg("DOWNLINK TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>")
+            self.downlink(work)
         else:
             log.msg("Unkown work")
             log.msg(work)
 
     def store(self, work):
         # modify the filename here
-        log.msg(self.filepath)
-        log.msg(work.filename)
         chunk = open(self.filepath + work.filename, "w")
         chunk.write(work.payload)
         chunk.close()
         self.getWork(Work(work.uuid, work.job, work.filename, None))
-            
+    
+    def downlink(self, work):
+        log.msg(work.filename)
+        chunk = open(self.filepath + work.filename, "r")
+        data = chunk.read()
+        chunk.close()
+        new_work = Work(work.uuid, work.job, work.filename, data)
+        packet = Packet(self.address, "Receiver", self.address, "Server", CHUNK, new_work, HEADERS_SIZE)
+        self.forwardToServer(pickle.dumps(packet))
+        self.getWork(Work(work.uuid, work.job, work.filename, None))
+                   
     def forwardToServer(self, packetstring):
         self.factory.fromWorkerToCSClient.put(packetstring)
             
     def forwardToChild(self, packet):
         self.factory.fromWorkerToCSServer.put(packet)
-        
-    def requestChunk(self):
-        log.msg("requesting chunk")
-        packet = Packet(self.id, "receiver", self.id, "Server", GET_CHUNK, None, HEADERS_SIZE)
-        data = pickle.dumps(packet)
-        self.transport.write(data)
-    
-    def receivedChunk(self, packet):
-        log.msg("Chunk received")
-        chunk = open("chunk1.jpg", "wb")
-        chunk.write(packet.payload.data)
-        chunk.close()
 
             
 class TransportWorkerFactory(protocol.ClientFactory):

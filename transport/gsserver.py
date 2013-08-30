@@ -20,13 +20,16 @@ class TransportGSServerProtocol(protocol.Protocol):
         log.msg("GSServer <---> CSClient connection made")
              
     def dataReceived(self, packetstring):
+        self.factory.fromGSServerToGSClient.put(packetstring)
+        """
         packet = pickle.loads(packetstring)
         if packet.destination == "Server":
             self.factory.fromGSServerToGSClient.put(packetstring)
         else:
             log.msg(packet)
             log("Unknown stuff: FIX ME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
-    
+        """
+        
     def forwardToChild(self, packet):
         log.msg("data received from master")
         

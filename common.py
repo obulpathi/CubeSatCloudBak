@@ -90,7 +90,17 @@ class Box(object):
         self.bottom = bottom
 """
 
-Work = namedtuple('Work', 'uuid job filename payload')
+#Work = namedtuple('Work', 'uuid job filename payload')
+
+class Work(object):
+    def __init__(self, uuid, job, filename, payload):
+        self.uuid = uuid
+        self.job = job
+        self.filename = filename
+        self.payload = payload
+
+    def __repr__(self):
+        return "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename
 
 class Chunk(object):
     def __init__(self, uuid, name, size, box):

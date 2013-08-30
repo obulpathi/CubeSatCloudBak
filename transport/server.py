@@ -25,7 +25,7 @@ class TransportServerProtocol(protocol.Protocol):
         elif packet.flags == GET_MISSION:
             self.getMission(packet.sender)
         elif packet.flags == CHUNK:
-            self.receiveChunk(packet)
+            self.receivedChunk(packet)
         else:
             log.msg("Unknown stuff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
             log.msg(packet)
@@ -59,6 +59,9 @@ class TransportServerProtocol(protocol.Protocol):
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
 
+    def receivedChunk(self, packet):
+        log.msg("Received chunk >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        
 # Server factory
 class TransportServerFactory(protocol.Factory):
     def __init__(self, commands):
