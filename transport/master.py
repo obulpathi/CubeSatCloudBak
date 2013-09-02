@@ -81,6 +81,13 @@ class TransportMasterProtocol(protocol.Protocol):
     # got mission
     def gotMission(self, mission):
         self.factory.gotMission(mission)
+    
+    # send metadatat
+    def sendMetadata(self, metadata):
+        packet = Packet(self.factory.address, "Receiver", self.factory.address, "Server", \
+                        "METADATA", metadata, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.transport.write(packetstring)
         
     # get work to workers
     def getWork(self, worker, finishedWork = None):
@@ -155,6 +162,11 @@ class TransportMasterFactory(protocol.Factory):
         else:
             task.deferLater(reactor, 1, self.getMission)
 
+    def sendMetadata(self, metadata):
+        for transport in self.transports:
+            if transport.status == REGISTERED:
+                transport.sendMetadata(metadata)
+                
     def getWork(self, worker, oldWork = None):
         log.msg("Work requested by worker")
         if oldWork:
@@ -286,6 +298,9 @@ class TransportMasterFactory(protocol.Factory):
         elif self.mission.operation == STORE:
             if self.isStoreMissionComplete():
                 log.msg("Mission Accomplished")
+                # send the metadata
+                self.sendMetadata(self.metadata)
+                time.sleep(1)
                 self.getMission()
         elif self.mission.operation == PROCESS:
             return self.isProcessMissionComplete()

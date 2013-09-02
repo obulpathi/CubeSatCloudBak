@@ -98,7 +98,6 @@ class Work(object):
         self.job = job
         self.filename = filename
         self.payload = payload
-
     def __repr__(self):
         return "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename
 
@@ -110,7 +109,6 @@ class Chunk(object):
         self.box = box
         self.status = "UNASSIGNED"
         self.worker = None
-
     def __repr__(self):
         return "Name: " + str(self.name) + ", Size: " + str(self.size) + \
                ", Box: " + str(self.box) + ", Status: " + str(self.status) + ", Worker: " + str(self.worker)
@@ -151,7 +149,7 @@ class Packet(object):
         flagstring = ""
         if self.flags == REGISTER:
             flagstring = flagstring + ", " + "REGISTER"
-        elif self.flags & REGISTERED:
+        elif self.flags == REGISTERED:
             flagstring = flagstring + ", " + "REGISTERED"
         elif self.flags == UNREGISTER:
             flagstring = flagstring + ", " + "UNREGISTER"
@@ -164,6 +162,8 @@ class Packet(object):
         elif self.flags == GET_CHUNK:
             flagstring = flagstring + ", " + "GET_CHUNK"
         elif self.flags == CHUNK:
+            flagstring = flagstring + ", " + "CHUNK"
+        elif self.flags == "CHUNK":
             flagstring = flagstring + ", " + "CHUNK"
         else:
             flagstring = flagstring + ", " + "UNKNOWN FLAG"

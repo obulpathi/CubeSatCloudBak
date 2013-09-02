@@ -1,4 +1,5 @@
 import pickle
+from uuid import uuid4
 
 from twisted.python import log
 from twisted.internet import task

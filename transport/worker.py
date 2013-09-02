@@ -1,6 +1,7 @@
 import os
 import pickle
 
+from time import sleep
 from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
@@ -88,13 +89,16 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.getWork(Work(work.uuid, work.job, work.filename, None))
     
     def downlink(self, work):
-        log.msg(work.filename)
-        chunk = open(self.filepath + work.filename, "r")
-        data = chunk.read()
-        chunk.close()
-        new_work = Work(work.uuid, work.job, work.filename, data)
-        packet = Packet(self.address, "Receiver", self.address, "Server", CHUNK, new_work, HEADERS_SIZE)
-        self.forwardToServer(pickle.dumps(packet))
+        filename = self.filepath + work.filename
+        log.msg(filename)
+        data = open(filename).read()
+        log.msg(work)
+        # work1 = Work(work.uuid, work.job, work.filename, data)
+        work.payload = data
+        packet = Packet(self.address, "Receiver", self.address, "Server", "CHUNK", work, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        self.forwardToServer(packetstring)
+        sleep(1)
         self.getWork(Work(work.uuid, work.job, work.filename, None))
                    
     def forwardToServer(self, packetstring):
