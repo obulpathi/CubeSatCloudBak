@@ -7,6 +7,8 @@ from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
+from threading import Lock
+
 from cloud.common import *
 
 class TransportWorkerProtocol(protocol.Protocol):
@@ -18,6 +20,7 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.cswaiter.start()
         self.ccwaiter.start()
         self.filepath = "/home/obulpathi/phd/cloud/data/"
+        self.mutex = Lock()
 
     def getData(self, data):
         self.transport.write(data)
@@ -27,21 +30,25 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.register()
     
     def dataReceived(self, packetstring):
-        packet = pickle.loads(packetstring)
-        if self.address == "Worker" and packet.flags & REGISTERED:
-            self.registered(packet)
-        elif packet.destination == "Server":
-            self.forwardToServer(packetstring)
-        elif packet.destination != self.address:
-            self.forwardToChild(packet)
-        elif packet.flags == "NO_WORK":
-            self.noWork()
-        elif packet.flags == "WORK":
-            self.gotWork(packet.payload)
-        elif packet.flags & CHUNK:
-            self.receivedChunk(packet)
-        else:
-            log.msg("Server said: %s" % packetstring)
+        self.mutex.acquire()
+        try:
+            packet = pickle.loads(packetstring)
+            if self.address == "Worker" and packet.flags & REGISTERED:
+                self.registered(packet)
+            elif packet.destination == "Server":
+                self.forwardToServer(packetstring)
+            elif packet.destination != self.address:
+                self.forwardToChild(packet)
+            elif packet.flags == "NO_WORK":
+                self.noWork()
+            elif packet.flags == "WORK":
+                self.gotWork(packet.payload)
+            elif packet.flags & CHUNK:
+                self.receivedChunk(packet)
+            else:
+                log.msg("Server said: %s" % packetstring)
+        finally:
+            self.mutex.release()
     
     def register(self):
         packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
@@ -93,7 +100,6 @@ class TransportWorkerProtocol(protocol.Protocol):
         log.msg(filename)
         data = open(filename).read()
         log.msg(work)
-        # work1 = Work(work.uuid, work.job, work.filename, data)
         work.payload = data
         packet = Packet(self.address, "Receiver", self.address, "Server", "CHUNK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)

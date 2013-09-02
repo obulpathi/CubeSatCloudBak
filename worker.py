@@ -33,6 +33,6 @@ if __name__ == "__main__":
                                                fromWorkerToCSServer, fromCSServerToWorker))
     reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
                         TransportCSClientFactory(fromWorkerToCSClient, fromCSClientToWorker))
-    reactor.listenTCP(config.csserver.port,
+    reactor.listenTCP(config.worker.port,
                         TransportCSServerFactory(fromWorkerToCSServer, fromCSServerToWorker))
     reactor.run()

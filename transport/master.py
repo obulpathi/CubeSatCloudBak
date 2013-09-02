@@ -1,6 +1,7 @@
 import os
 import math
 import pickle
+from time import sleep
 from uuid import uuid4
 from PIL import Image
 
@@ -13,6 +14,7 @@ from cloud.common import *
 
 # split the remote sensing data into chunks
 def splitImageIntoChunks(filename):
+    log.msg("creating chunks")
     chunks = {}
     image = Image.open(filename)
     width = image.size[0]
@@ -36,6 +38,7 @@ def splitImageIntoChunks(filename):
             chunk = Chunk(uuid4(), chunkname, size, box)
             chunks[chunk.uuid] = chunk
             count = count + 1
+    log.msg("created chunks")
     return chunks
 
 class TransportMasterProtocol(protocol.Protocol):
@@ -82,12 +85,15 @@ class TransportMasterProtocol(protocol.Protocol):
     def gotMission(self, mission):
         self.factory.gotMission(mission)
     
-    # send metadatat
+    # send metadata
     def sendMetadata(self, metadata):
+        log.msg("packing metadata")
+        metadatastring = pickle.dumps(metadata)
         packet = Packet(self.factory.address, "Receiver", self.factory.address, "Server", \
                         "METADATA", metadata, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
+        log.msg("sent metadata")
         
     # get work to workers
     def getWork(self, worker, finishedWork = None):
@@ -135,6 +141,7 @@ class TransportMasterFactory(protocol.Factory):
         self.metadata = {}
         try:
             os.mkdir("/home/obulpathi/phd/cloud/data/master")
+            os.mkdir("/home/obulpathi/phd/cloud/data/master/metadata")
         except OSError:
             pass
         task.deferLater(reactor, 1, self.getMission)
@@ -162,6 +169,23 @@ class TransportMasterFactory(protocol.Factory):
         else:
             task.deferLater(reactor, 1, self.getMission)
 
+    def saveMetadata(self):
+        log.msg("Saving metadata for the file:")
+        filename = "/home/obulpathi/phd/cloud/data/master/metadata/image.jpg"
+        metafile = open(filename, "w")
+        metastring = pickle.dumps(self.metadata)
+        metafile.write(metastring)
+        metafile.close()
+
+    # change the status of the chunks, after reading metadata        
+    def loadMetadata(self, filename):
+        log.msg("Loading metadata for the file: %s" % filename)
+        filename = "/home/obulpathi/phd/cloud/data/master/metadata/" + filename
+        metafile = open(filename)
+        metastring = metafile.read()
+        metafile.close()
+        self.metadata = pickle.loads(metastring)
+                
     def sendMetadata(self, metadata):
         for transport in self.transports:
             if transport.status == REGISTERED:
@@ -196,8 +220,12 @@ class TransportMasterFactory(protocol.Factory):
                 log.msg(chunk)
                 return work
         # no work: set a callback to check if mission is complete and return
-        task.deferLater(reactor, 0.1, self.isMissionComplete)
+        task.deferLater(reactor, 0.15, self.isMissionComplete)
 
+    def getProcessWork(self, worker):
+        log.msg("Process work requested by worker >>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        return "Process"
+        
     def getDownlinkWork(self, worker):
         log.msg("Downlink work requested by worker")
         chunks = self.metadata[worker]
@@ -225,11 +253,11 @@ class TransportMasterFactory(protocol.Factory):
 
     def finishedStoreWork(self, work):
         chunk = self.chunks[work.uuid]
-        del self.chunks[work.uuid]
         if self.metadata.get(chunk.worker):
             self.metadata[chunk.worker].append(chunk)
         else:
             self.metadata[chunk.worker] = [chunk]
+        del self.chunks[work.uuid]
     
     def finishedDownlinkWork(self, work, worker):
         chunks = self.metadata[worker]
@@ -257,12 +285,15 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("Executing sensing mission: ")
         source = open("data.jpg", "r")
         data = source.read()
-        source.close() 
+        source.close()
+        log.msg("Read from source")
         sink = open(mission.filename, "w")
         sink.write(data)
         sink.close()
+        log.msg("Wrote to sink")
         self.mission = None
         # get next mission
+        log.msg("Fecthing next mission")
         self.getMission()
     
     # store the given image on cdfs
@@ -280,7 +311,7 @@ class TransportMasterFactory(protocol.Factory):
 
     # downlink the given file
     def downlink(self, mission):
-        log.msg("DOWNLINKINGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG >>>>>>>>>>>>>>>>>>>>>>>>>>>> ")
+        log.msg("DOWNLINKINGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG >>>>>>>>>>>>> ")
         self.loadMetadata(None)
         self.mission = mission
 
@@ -293,15 +324,14 @@ class TransportMasterFactory(protocol.Factory):
     # check if the current mission is complete
     # and if it is, get a new misison
     def isMissionComplete(self):
-        if self.mission.operation == SENSE:
+        if not self.mission:
+            return True
+        elif self.mission.operation == SENSE:
             return self.isSenseMissionComplete()
         elif self.mission.operation == STORE:
             if self.isStoreMissionComplete():
-                log.msg("Mission Accomplished")
-                # send the metadata
-                self.sendMetadata(self.metadata)
-                time.sleep(1)
-                self.getMission()
+                task.deferLater(reactor, 0, self.storeMissionComplete)
+                return True
         elif self.mission.operation == PROCESS:
             return self.isProcessMissionComplete()
         elif self.mission.operation == DOWNLINK:
@@ -325,6 +355,14 @@ class TransportMasterFactory(protocol.Factory):
                     return False
         return True
     
+    def storeMissionComplete(self):
+        log.msg("Store Mission Accomplished")                        
+        # send the metadata
+        log.msg("sending metadata")
+        self.sendMetadata(self.metadata)
+        self.saveMetadata()
+        log.msg("fetching new mission")
+        
     def missionComplete(self):
         self.mission = None
         self.getMission()

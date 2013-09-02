@@ -24,7 +24,7 @@ class TransportServerProtocol(protocol.Protocol):
             self.unregister(packet)
         elif packet.flags == GET_MISSION:
             self.getMission(packet.sender)
-        elif packet.flags == CHUNK:
+        elif packet.flags == CHUNK or packet.flags == "CHUNK":
             self.receivedChunk(packet)
         elif packet.flags == "METADATA":
             self.factory.receivedMetadata(packet.payload)
@@ -96,4 +96,6 @@ class TransportServerFactory(protocol.Factory):
         return mission
     
     def receivedMetadata(self, metadata):
+        log.msg("Received metadata")
         self.metadata = metadata
+        print(metadata)
