@@ -330,7 +330,9 @@ class TransportMasterFactory(protocol.Factory):
             return self.isSenseMissionComplete()
         elif self.mission.operation == STORE:
             if self.isStoreMissionComplete():
-                task.deferLater(reactor, 0, self.storeMissionComplete)
+                self.mission = None
+                self.storeMissionComplete()
+                # task.deferLater(reactor, 0.05, self.storeMissionComplete)
                 return True
         elif self.mission.operation == PROCESS:
             return self.isProcessMissionComplete()
@@ -356,12 +358,15 @@ class TransportMasterFactory(protocol.Factory):
         return True
     
     def storeMissionComplete(self):
-        log.msg("Store Mission Accomplished")                        
+        log.msg("Store Mission Accomplished")
         # send the metadata
+        sleep(0.25)
         log.msg("sending metadata")
         self.sendMetadata(self.metadata)
-        self.saveMetadata()
-        log.msg("fetching new mission")
+        #self.saveMetadata()
+        sleep(0.25)
+        #log.msg("fetching new mission")
+        #self.getMission()
         
     def missionComplete(self):
         self.mission = None

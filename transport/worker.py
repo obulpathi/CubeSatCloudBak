@@ -32,6 +32,8 @@ class TransportWorkerProtocol(protocol.Protocol):
     def dataReceived(self, packetstring):
         self.mutex.acquire()
         try:
+            #log.msg(packetstring)
+            #sleep(1)
             packet = pickle.loads(packetstring)
             if self.address == "Worker" and packet.flags & REGISTERED:
                 self.registered(packet)
