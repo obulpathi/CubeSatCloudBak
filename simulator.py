@@ -2,6 +2,7 @@
 
 import sys
 import threading
+from time import sleep
 from multiprocessing import Queue
 
 from twisted.python import log
@@ -21,25 +22,27 @@ class MasterThread(threading.Thread):
         self.config = config
         threading.Thread.__init__(self)
     def run(self):
-        reactor.listenTCP(self.config.port, TransportMasterFactory())
+        reactor.listenTCP(self.config.port, TransportMasterFactory(self.config.homedir))
 
 class WorkerThread(threading.Thread):
-    def __init__(self, mconfig, gsconfig, csconfig):
+    def __init__(self, mconfig, gsconfig, worker):
         self.mconfig  = mconfig
         self.gsconfig = gsconfig
-        self.csconfig = csconfig
+        self.worker = worker
         self.fromWorkerToCSClient = Queue()
         self.fromCSClientToWorker = Queue()
         self.fromWorkerToCSServer = Queue()
         self.fromCSServerToWorker = Queue()
         threading.Thread.__init__(self)
+        
     def run(self):
         reactor.connectTCP(self.mconfig.address, self.mconfig.port,
-                            TransportWorkerFactory(self.fromWorkerToCSClient, self.fromCSClientToWorker,
-                                                   self.fromWorkerToCSServer, self.fromCSServerToWorker))
+                            TransportWorkerFactory(self.worker.homedir,
+                                                    self.fromWorkerToCSClient, self.fromCSClientToWorker,
+                                                    self.fromWorkerToCSServer, self.fromCSServerToWorker))
         reactor.connectTCP(self.gsconfig.address, self.gsconfig.port, 
                             TransportCSClientFactory(self.fromWorkerToCSClient, self.fromCSClientToWorker))
-        reactor.listenTCP(self.csconfig.port, 
+        reactor.listenTCP(self.worker.port, 
                             TransportCSServerFactory(self.fromWorkerToCSServer, self.fromCSServerToWorker))
 
 class GroundStationThread(threading.Thread):
@@ -57,10 +60,11 @@ class GroundStationThread(threading.Thread):
 class ServerThread(threading.Thread):
     def __init__(self, config, commands):
         self.port = config.port
+        self.homedir = config.homedir
         self.commands = commands
         threading.Thread.__init__(self)
     def run(self):
-        reactor.listenTCP(self.port, TransportServerFactory(self.commands))
+        reactor.listenTCP(self.port, TransportServerFactory(self.commands, self.homedir))
         
 if __name__ == "__main__":
     import yaml
@@ -77,22 +81,26 @@ if __name__ == "__main__":
     
     # create and start server
     server = ServerThread(config.server, config.commands)
-    server.start()    
+    server.start()
+    sleep(1)
     # create and start master
     master = MasterThread(config.master)
     master.start()
+    sleep(1)
     # create and start ground station
     groundstation = GroundStationThread(config.server, config.groundstation)
     groundstation.start()
+    sleep(1)
     # create and start worker thread
     worker = WorkerThread(config.master, config.groundstation, config.worker)
     worker.start()
+    sleep(1)
     #gs0 = GroundStationThread(config.server, config.groundstation0)
     #gs1 = GroundStationThread(config.server, config.groundstation1)
     #gs2 = GroundStationThread(config.server, config.groundstation2)
     #gs1.start()
     #gs2.start()
-    # create worker threads: mconfig, gsconfig, csconfig
+    # create worker threads: mconfig, gsconfig, worker
     #worker0 = WorkerThread(config.master, config.groundstation0, config.worker0)
     #worker1 = WorkerThread(config.master, config.groundstation1, config.worker1)
     #worker2 = WorkerThread(config.master, config.groundstation2, config.worker2)

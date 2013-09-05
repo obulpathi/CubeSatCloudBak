@@ -12,14 +12,14 @@ from threading import Lock
 from cloud.common import *
 
 class TransportWorkerProtocol(protocol.Protocol):
-    def __init__(self, factory):
+    def __init__(self, factory, homedir):
         self.factory = factory
+        self.homedir = homedir
         self.address = "Worker"
         self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getData)
         self.cswaiter.start()
         self.ccwaiter.start()
-        self.filepath = "/home/obulpathi/phd/cloud/data/"
         self.mutex = Lock()
 
     def getData(self, data):
@@ -32,8 +32,6 @@ class TransportWorkerProtocol(protocol.Protocol):
     def dataReceived(self, packetstring):
         self.mutex.acquire()
         try:
-            #log.msg(packetstring)
-            #sleep(1)
             packet = pickle.loads(packetstring)
             if self.address == "Worker" and packet.flags & REGISTERED:
                 self.registered(packet)
@@ -59,11 +57,12 @@ class TransportWorkerProtocol(protocol.Protocol):
         
     def registered(self, packet):
         self.address = packet.payload
-        self.filepath = self.filepath + str(self.address) + "/"
+        self.homedir = self.homedir + str(self.address) + "/"
         try:
-            os.mkdir(self.filepath)
+            os.mkdir(self.homedir)
         except OSError:
-            pass
+            log.msg("OSError: Unable to create home directory, exiting")
+            exit()
         self.status = IDLE
         self.getWork(None)
         
@@ -83,7 +82,7 @@ class TransportWorkerProtocol(protocol.Protocol):
         if work.job == "STORE":
             self.store(work)
         elif work.job == "PROCESS":
-            log.msg("PROCESS TODO: >>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            self.process(work)
         elif work.job == "DOWNLINK":
             self.downlink(work)
         else:
@@ -92,13 +91,17 @@ class TransportWorkerProtocol(protocol.Protocol):
 
     def store(self, work):
         # modify the filename here
-        chunk = open(self.filepath + work.filename, "w")
+        chunk = open(self.homedir + work.filename, "w")
         chunk.write(work.payload)
         chunk.close()
         self.getWork(Work(work.uuid, work.job, work.filename, None))
     
+    def process(self, work):
+        log.msg("TODO: PROCESS")
+        log.msg(work)
+        
     def downlink(self, work):
-        filename = self.filepath + work.filename
+        filename = self.homedir + work.filename
         log.msg(filename)
         data = open(filename).read()
         log.msg(work)
@@ -117,14 +120,15 @@ class TransportWorkerProtocol(protocol.Protocol):
 
             
 class TransportWorkerFactory(protocol.ClientFactory):
-    def __init__(self, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
+    def __init__(self, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
+        self.homedir = homedir
         self.fromWorkerToCSClient = fromWorkerToCSClient
         self.fromCSClientToWorker = fromCSClientToWorker
         self.fromWorkerToCSServer = fromWorkerToCSServer
         self.fromCSServerToWorker = fromCSServerToWorker
         
     def buildProtocol(self, addr):
-        return TransportWorkerProtocol(self)
+        return TransportWorkerProtocol(self, self.homedir)
         
     def clientConnectionFailed(self, connector, reason):
         log.msg("Connection failed.")

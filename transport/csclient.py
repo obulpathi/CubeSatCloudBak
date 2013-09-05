@@ -20,7 +20,6 @@ class TransportCSClientProtocol(protocol.Protocol):
     def connectionMade(self):
         log.msg("Worker connection made")
         self.status = REGISTERED
-        # self.register()
     
     def dataReceived(self, packetstring):
         self.factory.fromCSClientToWorker.put(packetstring)
@@ -35,7 +34,7 @@ class TransportCSClientProtocol(protocol.Protocol):
         self.id = packet.payload
         self.status = REGISTERED
         
-    def deregister(self):
+    def deregister1(self):
         self.transport.loseConnection()
         
             
@@ -43,11 +42,14 @@ class TransportCSClientFactory(protocol.ClientFactory):
     def __init__(self, fromWorkerToCSClient, fromCSClientToWorker):
         self.fromWorkerToCSClient = fromWorkerToCSClient
         self.fromCSClientToWorker = fromCSClientToWorker
+        
     def buildProtocol(self, addr):
         return TransportCSClientProtocol(self)
+        
     def clientConnectionFailed(self, connector, reason):
         log.msg("Connection failed.")
         reactor.stop()
+        
     def clientConnectionLost(self, connector, reason):
         log.msg("Connection lost.")
         reactor.stop()

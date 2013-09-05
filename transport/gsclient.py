@@ -14,13 +14,13 @@ class TransportGSClientProtocol(protocol.Protocol):
         self.address = "GroundStation"
         self.waiter = WaitForData(self.factory.fromGSServerToGSClient, self.getData)
         self.waiter.start()
-        self.state = UNREGISTERED # what the begin state?
+        self.state = UNREGISTERED # whats the begin state?
 
     def getData(self, data):
         self.transport.write(data)
         
     def connectionMade(self):
-        log.msg("GSClient connection made")
+        log.msg("Connection made")
         self.register()
     
     def dataReceived(self, packetstring):
@@ -29,9 +29,9 @@ class TransportGSClientProtocol(protocol.Protocol):
         if self.address == "GroundStation" and packet.flags & REGISTERED:
             self.registered(packet)
         elif packet.destination != self.address:
-            self.uplinkToCubeSat(packet)
+            self.uplinkToCubeSat(packetstring)
         else:
-            log.msg("Server said: %s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 12587463" % packetstring)
+            log.msg("Server said: %s " % packetstring)
     
     def register(self):
         packet = Packet(self.address, "Server", self.address, "Server", REGISTER, None, HEADERS_SIZE)
@@ -43,7 +43,7 @@ class TransportGSClientProtocol(protocol.Protocol):
         self.status = REGISTERED
         
     def deregister(self):
-        log.msg("TODO: DEREGISTRAITON >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        log.msg("TODO: Deregistration")
         self.transport.loseConnection()
     
     def downlinkFromCubeSat(self, packet):
@@ -57,11 +57,14 @@ class TransportGSClientFactory(protocol.ClientFactory):
     def __init__(self, fromGSClientToGSServer, fromGSServerToGSClient):
         self.fromGSClientToGSServer = fromGSClientToGSServer
         self.fromGSServerToGSClient = fromGSServerToGSClient
+        
     def buildProtocol(self, addr):
         return TransportGSClientProtocol(self)
+        
     def clientConnectionFailed(self, connector, reason):
         log.msg("Connection failed.")
         reactor.stop()
+        
     def clientConnectionLost(self, connector, reason):
         log.msg("Connection lost.")
         reactor.stop()

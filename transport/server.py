@@ -11,10 +11,10 @@ from cloud import utils
 from cloud.common import *
 
 class TransportServerProtocol(protocol.Protocol):
-    def __init__(self, factory):
+    def __init__(self, factory, homedir):
         self.factory = factory
-        self.filepath = "/home/obulpathi/phd/cloud/data/server/image"
-        
+        self.homedir = homedir
+
     # received data                        
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
@@ -31,63 +31,68 @@ class TransportServerProtocol(protocol.Protocol):
             self.receivedChunk(packet.payload)
         elif packet.flags == "METADATA":
             self.factory.receivedMetadata(packet.payload)
+        elif packet.flags == "COMPLETED_MISSION":
+            self.factory.finishedMission(packet.payload)
         else:
-            log.msg("Unknown stuff >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
-            log.msg(packet)
+            log.msg("Received unkown packet: %s", str(packet))
     
     # register groundstation
     def registerGroundStation(self, packet):
-        log.msg("registered ground station")
+        log.msg("Registered ground station")
         self.factory.registrationCount = self.factory.registrationCount + 1
-        packet = Packet(self.factory.address, "receiver", self.factory.address, self.factory.registrationCount, REGISTERED, \
-                        self.factory.registrationCount, HEADERS_SIZE)
+        packet = Packet(self.factory.address, "receiver", self.factory.address, self.factory.registrationCount, \
+						REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
     
     # unregister what?
     def unregister(self, packet):
-        log.msg("TODO: unregistered WHAT?? ^&%&^#%@&^#%@#&^ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        log.msg("TODO: unregister")
+        log.msg(packet)
     
     # register CubeSat
     def registerCubeSat(self, packet):
-        log.msg("registering CubeSat")
-        new_packet = Packet(self.factory.address, packet.sender, self.factory.address, packet.source, REGISTERED, \
-                        None, HEADERS_SIZE)
+        log.msg("Registering CubeSat")
+        new_packet = Packet(self.factory.address, packet.sender, self.factory.address, packet.source, \
+                            REGISTERED, None, HEADERS_SIZE)
         packetstring = pickle.dumps(new_packet)
         self.transport.write(packetstring)
 
     # get mission to ground station
     def getMission(self, receiver):
         mission = self.factory.getMission()
-        packet = Packet(self.factory.address, receiver, self.factory.address, "Master", MISSION, \
-            mission, HEADERS_SIZE)
+        packet = Packet(self.factory.address, receiver, self.factory.address, "Master", \
+                        MISSION, mission, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
 
-    def receivedChunk(self, work):
+    # received a chunk: is it better to save the chunk data to file here
+    # or should we do it ServerFactory?: Which one is better
+    def receivedChunk(self, chunk):
         log.msg("Received chunk")
-        filename = self.filepath + work.filename
-        log.msg(filename)
-        chunk = open(filename, "w")
-        chunk.write(work.payload)
-        chunk.close()
-        
+        log.msg(chunk.filename)
+        filename = self.homedir + "images/" + chunk.filename
+        handler = open(filename, "w")
+        handler.write(chunk.payload)
+        handler.close()
+
 # Server factory
 class TransportServerFactory(protocol.Factory):
-    def __init__(self, commands):
+    def __init__(self, commands, homedir):
         self.address = "Server"
         self.buildMissions(commands)
         self.registrationCount = 100
-        self.filepath = "/home/obulpathi/phd/cloud/data/server/"
+        self.homedir = homedir
         try:
-            os.mkdir("/home/obulpathi/phd/cloud/data/server")
-            os.mkdir("/home/obulpathi/phd/cloud/data/server/image")
-            os.mkdir("/home/obulpathi/phd/cloud/data/server/metadata")
+            os.mkdir(homedir)
+            os.mkdir(homedir + "images/")
+            os.mkdir(homedir + "metadata/")
         except OSError:
-            pass
+            log.msg("OSError: Unable to create data directories, exiting")
+            exit(1)
        
     def buildProtocol(self, addr):
-        return TransportServerProtocol(self)
+        return TransportServerProtocol(self, self.homedir)
     
     def buildMissions(self, commands):
         self.missions = []
@@ -108,7 +113,6 @@ class TransportServerFactory(protocol.Factory):
         mission = None
         if not self.missions:
             return None
-            # self.finishedDownlinking() >>>>>>>>>>>>>>>>>>>>>>>>>> FIX_THIS
         if self.missions:
             mission = self.missions[0]
             self.missions = self.missions[1:]
@@ -117,11 +121,23 @@ class TransportServerFactory(protocol.Factory):
     
     def receivedMetadata(self, metadata):
         log.msg("Received metadata")
+        log.msg(metadata)
         self.metadata = metadata
-        print(metadata)
-    
-    def finishedDownlinking(self):
-        filename = "/home/obulpathi/phd/cloud/data/server/image.jpg"
-        directory = "/home/obulpathi/phd/cloud/data/server/"
-        utils.stichChunksIntoImage(directory, filename, self.metadata) 
-        log.msg("Mission Complete")
+
+    def finishedMission(self, mission):
+        if not mission:
+            log.msg("Finished unknown mission")
+        elif mission.operation == "SENSE":
+            pass
+        elif mission.operation == "STORE":
+            pass
+        elif mission.operation == "PROCESS":
+            pass
+        elif mission.operation == "DOWNLINK":
+            self.finishedDownlinkMission(self.homedir + "image.jpg")
+        else:
+            log.msg("Finished unknown mission: %s", str(mission))
+
+    def finishedDownlinkMission(self, filename):
+        utils.stichChunksIntoImage(self.homedir + "images/", filename, self.metadata) 
+        log.msg("Downlink Mission Complete")

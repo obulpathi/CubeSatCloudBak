@@ -1,8 +1,6 @@
 import pickle
-from uuid import uuid4
 
 from twisted.python import log
-from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
@@ -14,36 +12,17 @@ class TransportGSServerProtocol(protocol.Protocol):
         self.waiter = WaitForData(self.factory.fromGSClientToGSServer, self.getData)
         self.waiter.start()
 
-    def getData(self, packet):
-        self.transport.write(pickle.dumps(packet))
+    def getData(self, packetstring):
+        self.transport.write(packetstring)
     
     def connectionMade(self):
-        log.msg("GSServer <---> CSClient connection made")
+        log.msg("Connection made between GSServer and CSClient")
              
     def dataReceived(self, packetstring):
         self.factory.fromGSServerToGSClient.put(packetstring)
-        """
-        packet = pickle.loads(packetstring)
-        if packet.destination == "Server":
-            self.factory.fromGSServerToGSClient.put(packetstring)
-        else:
-            log.msg(packet)
-            log("Unknown stuff: FIX ME >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...")
-        """
         
     def forwardToChild(self, packet):
         log.msg("data received from master")
-        
-    def registerWorker(self, packetstring):
-        log.msg("router got the registration request")
-        # send this packet to master
-        self.factory.fromGSServerToGSClient.put(packetstring)
-        
-    def transmitChunk(self):
-        self.transport.write(chunk)
-    
-    def replicateChunk(self):
-        log.msg("replicate chunk")
     
 class TransportGSServerFactory(protocol.Factory):
     def __init__(self, fromGSClientToGSServer, fromGSServerToGSClient):

@@ -36,8 +36,8 @@ class TransportMasterProtocol(protocol.Protocol):
     def registerWorker(self, packet):
         log.msg("registered worker")
         self.factory.registrationCount = self.factory.registrationCount + 1
-        packet = Packet(self.factory.address, self.factory.registrationCount, \
-                        self.factory.address, self.factory.registrationCount, \
+        packet = Packet(self.factory.address, self.factory.registrationCount, 
+                        self.factory.address, self.factory.registrationCount, 
                         REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
@@ -45,7 +45,8 @@ class TransportMasterProtocol(protocol.Protocol):
     
     # get mission
     def getMission(self):
-        packet = Packet(self.factory.address, "Receiver", self.factory.address, "Server", \
+        packet = Packet(self.factory.address, "Receiver",
+                        self.factory.address, "Server", 
                         GET_MISSION, None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
@@ -54,15 +55,13 @@ class TransportMasterProtocol(protocol.Protocol):
     def gotMission(self, mission):
         self.factory.gotMission(mission)
     
-    # send metadata
-    def sendMetadata(self, metadata):
-        log.msg("packing metadata")
-        metadatastring = pickle.dumps(metadata)
-        packet = Packet(self.factory.address, "Receiver", self.factory.address, "Server", \
-                        "METADATA", metadata, HEADERS_SIZE)
+    # send data to server
+    def sendData(self, flags, data):
+        packet = Packet(self.factory.address, "Receiver",
+                        self.factory.address, "Server", 
+                        flags, data, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
-        log.msg("sent metadata")
         
     # get work to workers
     def getWork(self, worker, finishedWork = None):
@@ -74,14 +73,16 @@ class TransportMasterProtocol(protocol.Protocol):
             
     # send no work message
     def noWork(self, destination):
-        packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
+        packet = Packet(self.factory.address, "Receiver",
+                        self.factory.address, destination,
                         "NO_WORK", None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
 
     # send work
     def sendWork(self, destination, work):
-        packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
+        packet = Packet(self.factory.address, "Receiver",
+                        self.factory.address, destination,
                         "WORK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
@@ -92,7 +93,8 @@ class TransportMasterProtocol(protocol.Protocol):
         image = open("chunk.jpg", "rb")
         data = image.read()
         chunk = Chunk("chunkid", "size", "box", data)
-        packet = Packet(self.factory.address, "Receiver", self.factory.address, destination, \
+        packet = Packet(self.factory.address, "Receiver",
+                        self.factory.address, destination,
                         CHUNK, chunk, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
@@ -100,17 +102,17 @@ class TransportMasterProtocol(protocol.Protocol):
 
 # Master factory
 class TransportMasterFactory(protocol.Factory):
-    def __init__(self):
+    def __init__(self, homedir):
         self.status = "START"
         self.address = "Master"
         self.mission = None
         self.transports = []
         self.registrationCount = 0
-        self.filepath = None
+        self.homedir = homedir
         self.metadata = {}
         try:
-            os.mkdir("/home/obulpathi/phd/cloud/data/master")
-            os.mkdir("/home/obulpathi/phd/cloud/data/master/metadata")
+            os.mkdir(self.homedir)
+            os.mkdir(self.homedir + "/metadata")
         except OSError:
             pass
         task.deferLater(reactor, 1, self.getMission)
@@ -121,28 +123,34 @@ class TransportMasterFactory(protocol.Factory):
         return transport
     
     def connected(self, transport):
-        self.getMission()
+        task.deferLater(reactor, 5, self.getMission)
         
     def getMission(self):
+        log.msg("Requesting for new mission")
         for transport in self.transports:
             if transport.status == REGISTERED:
                 transport.getMission()
                 return                
         task.deferLater(reactor, 5, self.getMission)
-    
+
     def gotMission(self, mission):
         log.msg("Got mission")
         log.msg(mission)
         if mission:
             self.execute(mission)
         else:
-            task.deferLater(reactor, 1, self.getMission)
-                
-    def sendMetadata(self, metadata):
+            task.deferLater(reactor, 5, self.getMission)
+
+    def sendData(self, flags, data):
         for transport in self.transports:
             if transport.status == REGISTERED:
-                transport.sendMetadata(metadata)
-                
+                transport.sendData(flags, data)
+                        
+    def sendMetadata(self, metadata):
+        self.sendData("METADATA", metadata)
+        log.msg("Sent metadata")
+        return
+
     def getWork(self, worker, oldWork = None):
         log.msg("Work requested by worker")
         if oldWork:
@@ -190,7 +198,7 @@ class TransportMasterFactory(protocol.Factory):
         # no work: check if mission is complete
         if self.isMissionComplete():
             log.msg("Mission Accomplished")
-            self.getMission()
+            self.downlinkMissionComplete(self.mission)
         
     def finishedWork(self, work, worker):
         if self.mission.operation == STORE:
@@ -243,10 +251,7 @@ class TransportMasterFactory(protocol.Factory):
         sink.write(data)
         sink.close()
         log.msg("Wrote to sink")
-        self.mission = None
-        # get next mission
-        log.msg("Fecthing next mission")
-        self.getMission()
+        self.senseMissionComplete(mission)
     
     # store the given image on cdfs
     def store(self, mission):
@@ -313,7 +318,8 @@ class TransportMasterFactory(protocol.Factory):
 
     def senseMissionComplete(self, mission):
         log.msg("Sense Mission Accomplished")
-        mission
+        # send a notification that current mission is complete
+        self.missionComplete(mission)
             
     def storeMissionComplete(self):
         log.msg("Store Mission Accomplished")
@@ -322,14 +328,15 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("sending metadata")
         self.sendMetadata(self.metadata)
         utils.saveMetadata(self.metadata)
-        log.msg("fetching new mission")
         task.deferLater(reactor, 2, self.getMission)
 
-    def downlinkMissionComplete(self):
+    def downlinkMissionComplete(self, mission):
         log.msg("Downlink Mission Accomplished")
-        log.msg("fetching new mission")
-        task.deferLater(reactor, 2, self.getMission)
-
-    def missionComplete(self):
+        self.missionComplete(mission)
+        
+    def missionComplete(self, mission):
+        sleep(0.25)
+        log.msg("Sending mission status")
+        self.sendData("COMPLETED_MISSION", mission)
         self.mission = None
-        self.getMission()
+        task.deferLater(reactor, 1, self.getMission)

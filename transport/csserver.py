@@ -17,7 +17,7 @@ class TransportCSServerProtocol(protocol.Protocol):
         self.transport.write(data)
         
     def connectionMade(self):
-        log.msg("router connection made")
+        log.msg("Connection made")
                 
     def dataReceived(self, packetstring):
         self.fromCSServerToWorker.put(packetstring)

@@ -67,11 +67,11 @@ def stichChunksIntoImage(directory, filename, metadata):
     for chunk in chunks:
         # fetch the chunk
         if chunk.name[-6] == "/":
-            data = Image.open(directory + "image" + chunk.name[-5] + ".jpg")
+            data = Image.open(directory + chunk.name[-5] + ".jpg")
             print(chunk.box)
             result.paste(data, (chunk.box.left, chunk.box.top))
         else:
-            data = Image.open(directory + "image" + chunk.name[-6:-5] + ".jpg")
+            data = Image.open(directory + chunk.name[-6:-5] + ".jpg")
             print(chunk.box)
             result.paste(data, (chunk.box.left, chunk.box.top))
     result.save(filename)
