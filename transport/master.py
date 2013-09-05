@@ -1,45 +1,14 @@
 import os
-import math
 import pickle
 from time import sleep
-from uuid import uuid4
-from PIL import Image
 
 from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 
+from cloud import utils
 from cloud.common import *
-
-# split the remote sensing data into chunks
-def splitImageIntoChunks(filename):
-    log.msg("creating chunks")
-    chunks = {}
-    image = Image.open(filename)
-    width = image.size[0]
-    height = image.size[1]
-    # create data subdirectory for this file
-    directory = "/home/obulpathi/phd/cloud/data/master/" + filename.split(".")[0]
-    os.mkdir(directory)
-    count = 0 # chunk counter
-    for y in range(0, int(math.ceil(float(height)/chunk_y))):
-        for x in range(0, int(math.ceil(float(width)/chunk_x))):
-            left = x * chunk_x
-            top = y * chunk_y
-            right = min((x+1) * chunk_x, width)
-            bottom = min((y+1) * chunk_y, height)
-            # box = (left, top, right, bottom)
-            data = image.crop((left, top, right, bottom))
-            chunkname = directory + "/" + str(count) + ".jpg"
-            data.save(chunkname)
-            size = os.stat(chunkname).st_size
-            box = Box(left, top, right, bottom)
-            chunk = Chunk(uuid4(), chunkname, size, box)
-            chunks[chunk.uuid] = chunk
-            count = count + 1
-    log.msg("created chunks")
-    return chunks
 
 class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
@@ -159,7 +128,7 @@ class TransportMasterFactory(protocol.Factory):
             if transport.status == REGISTERED:
                 transport.getMission()
                 return                
-        task.deferLater(reactor, 1, self.getMission)
+        task.deferLater(reactor, 5, self.getMission)
     
     def gotMission(self, mission):
         log.msg("Got mission")
@@ -168,23 +137,6 @@ class TransportMasterFactory(protocol.Factory):
             self.execute(mission)
         else:
             task.deferLater(reactor, 1, self.getMission)
-
-    def saveMetadata(self):
-        log.msg("Saving metadata for the file:")
-        filename = "/home/obulpathi/phd/cloud/data/master/metadata/image.jpg"
-        metafile = open(filename, "w")
-        metastring = pickle.dumps(self.metadata)
-        metafile.write(metastring)
-        metafile.close()
-
-    # change the status of the chunks, after reading metadata        
-    def loadMetadata(self, filename):
-        log.msg("Loading metadata for the file: %s" % filename)
-        filename = "/home/obulpathi/phd/cloud/data/master/metadata/" + filename
-        metafile = open(filename)
-        metastring = metafile.read()
-        metafile.close()
-        self.metadata = pickle.loads(metastring)
                 
     def sendMetadata(self, metadata):
         for transport in self.transports:
@@ -300,7 +252,7 @@ class TransportMasterFactory(protocol.Factory):
     def store(self, mission):
         log.msg("Executing storing mission: ")
         # split the image into chunks
-        self.chunks = splitImageIntoChunks(mission.filename)
+        self.chunks = utils.splitImageIntoChunks(mission.filename)
         # mission is ready to be executed
         self.mission = mission
 
@@ -311,7 +263,7 @@ class TransportMasterFactory(protocol.Factory):
 
     # downlink the given file
     def downlink(self, mission):
-        log.msg("DOWNLINKINGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG >>>>>>>>>>>>> ")
+        log.msg(mission)
         self.loadMetadata(None)
         self.mission = mission
 
@@ -338,6 +290,8 @@ class TransportMasterFactory(protocol.Factory):
             return self.isProcessMissionComplete()
         elif self.mission.operation == DOWNLINK:
             return self.isDownlinkMissionComplete()
+            self.mission = None
+            self.downlinkMissionComplete()
 
     def isSenseMissionComplete(self):
         return False
@@ -356,18 +310,26 @@ class TransportMasterFactory(protocol.Factory):
                 if chunk.status != "FINISHED":
                     return False
         return True
-    
+
+    def senseMissionComplete(self, mission):
+        log.msg("Sense Mission Accomplished")
+        mission
+            
     def storeMissionComplete(self):
         log.msg("Store Mission Accomplished")
         # send the metadata
         sleep(0.25)
         log.msg("sending metadata")
         self.sendMetadata(self.metadata)
-        #self.saveMetadata()
-        sleep(0.25)
-        #log.msg("fetching new mission")
-        #self.getMission()
-        
+        utils.saveMetadata(self.metadata)
+        log.msg("fetching new mission")
+        task.deferLater(reactor, 2, self.getMission)
+
+    def downlinkMissionComplete(self):
+        log.msg("Downlink Mission Accomplished")
+        log.msg("fetching new mission")
+        task.deferLater(reactor, 2, self.getMission)
+
     def missionComplete(self):
         self.mission = None
         self.getMission()

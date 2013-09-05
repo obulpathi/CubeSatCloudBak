@@ -1,3 +1,4 @@
+import os
 import pickle
 from time import sleep
 from uuid import uuid4
@@ -6,11 +7,13 @@ from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
 
+from cloud import utils
 from cloud.common import *
 
 class TransportServerProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
+        self.filepath = "/home/obulpathi/phd/cloud/data/server/image"
         
     # received data                        
     def dataReceived(self, packetstring):
@@ -25,7 +28,7 @@ class TransportServerProtocol(protocol.Protocol):
         elif packet.flags == GET_MISSION:
             self.getMission(packet.sender)
         elif packet.flags == CHUNK or packet.flags == "CHUNK":
-            self.receivedChunk(packet)
+            self.receivedChunk(packet.payload)
         elif packet.flags == "METADATA":
             self.factory.receivedMetadata(packet.payload)
         else:
@@ -61,8 +64,13 @@ class TransportServerProtocol(protocol.Protocol):
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
 
-    def receivedChunk(self, packet):
-        log.msg("Received chunk >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    def receivedChunk(self, work):
+        log.msg("Received chunk")
+        filename = self.filepath + work.filename
+        log.msg(filename)
+        chunk = open(filename, "w")
+        chunk.write(work.payload)
+        chunk.close()
         
 # Server factory
 class TransportServerFactory(protocol.Factory):
@@ -70,12 +78,21 @@ class TransportServerFactory(protocol.Factory):
         self.address = "Server"
         self.buildMissions(commands)
         self.registrationCount = 100
+        self.filepath = "/home/obulpathi/phd/cloud/data/server/"
+        try:
+            os.mkdir("/home/obulpathi/phd/cloud/data/server")
+            os.mkdir("/home/obulpathi/phd/cloud/data/server/image")
+            os.mkdir("/home/obulpathi/phd/cloud/data/server/metadata")
+        except OSError:
+            pass
        
     def buildProtocol(self, addr):
         return TransportServerProtocol(self)
     
     def buildMissions(self, commands):
         self.missions = []
+        if not commands:
+            return
         for command in commands:
             log.msg(command)
             mission = Mission()
@@ -89,6 +106,9 @@ class TransportServerFactory(protocol.Factory):
         
     def getMission(self):
         mission = None
+        if not self.missions:
+            return None
+            # self.finishedDownlinking() >>>>>>>>>>>>>>>>>>>>>>>>>> FIX_THIS
         if self.missions:
             mission = self.missions[0]
             self.missions = self.missions[1:]
@@ -99,3 +119,9 @@ class TransportServerFactory(protocol.Factory):
         log.msg("Received metadata")
         self.metadata = metadata
         print(metadata)
+    
+    def finishedDownlinking(self):
+        filename = "/home/obulpathi/phd/cloud/data/server/image.jpg"
+        directory = "/home/obulpathi/phd/cloud/data/server/"
+        utils.stichChunksIntoImage(directory, filename, self.metadata) 
+        log.msg("Mission Complete")

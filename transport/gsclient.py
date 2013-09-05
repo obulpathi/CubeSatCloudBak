@@ -29,7 +29,6 @@ class TransportGSClientProtocol(protocol.Protocol):
         if self.address == "GroundStation" and packet.flags & REGISTERED:
             self.registered(packet)
         elif packet.destination != self.address:
-            log.msg("uplinking data to cubesat")
             self.uplinkToCubeSat(packet)
         else:
             log.msg("Server said: %s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 12587463" % packetstring)
