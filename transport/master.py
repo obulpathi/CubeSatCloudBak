@@ -86,18 +86,6 @@ class TransportMasterProtocol(protocol.Protocol):
                         "WORK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.transport.write(packetstring)
-        
-    # transmit chunk
-    def transmitChunk(self, destination):
-        log.msg("Master got request for chunk")
-        image = open("chunk.jpg", "rb")
-        data = image.read()
-        chunk = Chunk("chunkid", "size", "box", data)
-        packet = Packet(self.factory.address, "Receiver",
-                        self.factory.address, destination,
-                        CHUNK, chunk, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.transport.write(packetstring)
 
 
 # Master factory
@@ -134,11 +122,12 @@ class TransportMasterFactory(protocol.Factory):
         task.deferLater(reactor, 5, self.getMission)
 
     def gotMission(self, mission):
-        log.msg("Got mission")
-        log.msg(mission)
         if mission:
+            log.msg("Got mission")
+            log.msg(mission)
             self.execute(mission)
         else:
+            log.msg("No mission")
             task.deferLater(reactor, 5, self.getMission)
 
     def sendData(self, flags, data):
@@ -181,6 +170,7 @@ class TransportMasterFactory(protocol.Factory):
                 return work
         # no work: set a callback to check if mission is complete and return
         task.deferLater(reactor, 0.15, self.isMissionComplete)
+        return None
 
     def getProcessWork(self, worker):
         log.msg("Process work requested by worker >>>>>>>>>>>>>>>>>>>>>>>>>>>")
@@ -197,7 +187,6 @@ class TransportMasterFactory(protocol.Factory):
                 return work
         # no work: check if mission is complete
         if self.isMissionComplete():
-            log.msg("Mission Accomplished")
             self.downlinkMissionComplete(self.mission)
         
     def finishedWork(self, work, worker):
@@ -328,7 +317,7 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("sending metadata")
         self.sendMetadata(self.metadata)
         utils.saveMetadata(self.metadata)
-        task.deferLater(reactor, 2, self.getMission)
+        task.deferLater(reactor, 1, self.getMission)
 
     def downlinkMissionComplete(self, mission):
         log.msg("Downlink Mission Accomplished")

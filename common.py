@@ -165,6 +165,8 @@ class Packet(object):
             flagstring = flagstring + ", " + "CHUNK"
         elif self.flags == "CHUNK":
             flagstring = flagstring + ", " + "CHUNK"
+        elif self.flags == MISSION:
+            flagstring = ", MISSION"
         else:
             flagstring = flagstring + ", " + "UNKNOWN FLAG"
         

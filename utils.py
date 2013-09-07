@@ -54,8 +54,8 @@ def splitImageIntoChunks(filename):
 
 # stich chunks into image
 def stichChunksIntoImage(directory, filename, metadata):
-    width = 400
-    height = 400
+    width = 182
+    height = 162
 
     print(metadata)
     # creates a new empty image, RGB mode, and size width by height
