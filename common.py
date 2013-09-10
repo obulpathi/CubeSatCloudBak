@@ -114,18 +114,18 @@ class Chunk(object):
                ", Box: " + str(self.box) + ", Status: " + str(self.status) + ", Worker: " + str(self.worker)
 
 # Packet flags
-NO_FLAG     = 0
-REGISTER    = 1
-REGISTERED  = 2
-UNREGISTER  = 3
-UNREGISTERED= 4
-TORRENT     = 5
-MAPREDUCE   = 6
-GET_CHUNK   = 7
-CHUNK       = 8
-COMMAND     = 9
-GET_MISSION = 10
-MISSION     = 11
+NO_FLAG     = "NO_FLAG"
+REGISTER    = "REGISTER"
+REGISTERED  = "REGISTERED"
+UNREGISTER  = "UNREGISTER"
+UNREGISTERED= "UNREGISTERED"
+TORRENT     = "TORRENT"
+MAPREDUCE   = "MAPREDUCE"
+GET_CHUNK   = "GET_CHUNK"
+CHUNK       = "CHUNK"
+COMMAND     = "COMMAND"
+GET_MISSION = "GET_MISSION"
+MISSION     = "MISSION"
 SENSE       = "SENSE"
 STORE       = "STORE"
 PROCESS     = "PROCESS"
@@ -168,7 +168,7 @@ class Packet(object):
         elif self.flags == MISSION:
             flagstring = ", MISSION"
         else:
-            flagstring = flagstring + ", " + "UNKNOWN FLAG"
+            flagstring = ", " + self.flags
         
         return "Sender: " + str(self.sender) + ", Receiver: " + str(self.receiver) + ", Source: " + \
                 str(self.source) + ", Destination: " + str(self.destination) + flagstring + \

@@ -28,5 +28,6 @@ class TransportGSServerFactory(protocol.Factory):
     def __init__(self, fromGSClientToGSServer, fromGSServerToGSClient):
         self.fromGSClientToGSServer = fromGSClientToGSServer
         self.fromGSServerToGSClient = fromGSServerToGSClient
+        
     def buildProtocol(self, addr):
         return TransportGSServerProtocol(self)

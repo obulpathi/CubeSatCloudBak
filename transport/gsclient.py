@@ -26,7 +26,7 @@ class TransportGSClientProtocol(protocol.Protocol):
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
         log.msg(packet)
-        if self.address == "GroundStation" and packet.flags & REGISTERED:
+        if self.address == "GroundStation" and packet.flags == REGISTERED:
             self.registered(packet)
         elif packet.destination != self.address:
             self.uplinkToCubeSat(packetstring)
@@ -37,6 +37,7 @@ class TransportGSClientProtocol(protocol.Protocol):
         packet = Packet(self.address, "Server", self.address, "Server", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
+        log.msg(packet)
         
     def registered(self, packet):
         self.address = packet.payload
@@ -48,6 +49,7 @@ class TransportGSClientProtocol(protocol.Protocol):
     
     def downlinkFromCubeSat(self, packet):
         self.transport.write(packetstring)
+        log.msg(packet)
     
     def uplinkToCubeSat(self, packet):
         self.factory.fromGSClientToGSServer.put(packet)

@@ -18,6 +18,7 @@ class TransportServerProtocol(protocol.Protocol):
     # received data                        
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
+        log.msg(packet)
         if packet.flags == REGISTER:
             if packet.source == "GroundStation":
                 self.registerGroundStation(packet)
@@ -43,6 +44,7 @@ class TransportServerProtocol(protocol.Protocol):
         packet = Packet(self.factory.address, "receiver", self.factory.address, self.factory.registrationCount, \
 						REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
+        log.msg(packet)
         self.transport.write(packetstring)
     
     # unregister what?
@@ -56,6 +58,7 @@ class TransportServerProtocol(protocol.Protocol):
         new_packet = Packet(self.factory.address, packet.sender, self.factory.address, packet.source, \
                             REGISTERED, None, HEADERS_SIZE)
         packetstring = pickle.dumps(new_packet)
+        log.msg(new_packet)
         self.transport.write(packetstring)
 
     # get mission to ground station
@@ -64,6 +67,7 @@ class TransportServerProtocol(protocol.Protocol):
         packet = Packet(self.factory.address, receiver, self.factory.address, "Master", \
                         MISSION, mission, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
+        log.msg(packet)
         self.transport.write(packetstring)
 
     # received a chunk: is it better to save the chunk data to file here

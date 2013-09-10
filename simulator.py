@@ -10,6 +10,7 @@ from twisted.internet import reactor
 
 from cloud.common import *
 from cloud.transport.master import *
+from cloud.transport.mclient import *
 from cloud.transport.server import *
 from cloud.transport.gsserver import *
 from cloud.transport.gsclient import *
@@ -20,9 +21,16 @@ from cloud.transport.csclient import *
 class MasterThread(threading.Thread):
     def __init__(self, config):
         self.config = config
+        self.fromMasterToMasterClient = Queue()
+        self.fromMasterClientToMaster = Queue()
         threading.Thread.__init__(self)
+
     def run(self):
-        reactor.listenTCP(self.config.port, TransportMasterFactory(self.config.homedir))
+        reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
+                        TransportMasterClientFactory(self.fromMasterToMasterClient, self.fromMasterClientToMaster))
+        reactor.listenTCP(self.config.port,
+                        TransportMasterFactory(self.config.homedir,
+                                                self.fromMasterToMasterClient, self.fromMasterClientToMaster))
 
 class WorkerThread(threading.Thread):
     def __init__(self, mconfig, gsconfig, worker):
@@ -34,7 +42,7 @@ class WorkerThread(threading.Thread):
         self.fromWorkerToCSServer = Queue()
         self.fromCSServerToWorker = Queue()
         threading.Thread.__init__(self)
-        
+
     def run(self):
         reactor.connectTCP(self.mconfig.address, self.mconfig.port,
                             TransportWorkerFactory(self.worker.homedir,
@@ -52,6 +60,7 @@ class GroundStationThread(threading.Thread):
         self.fromGSClientToGSServer = Queue()
         self.fromGSServerToGSClient = Queue()
         threading.Thread.__init__(self)
+
     def run(self):
         reactor.connectTCP(self.sconfig.address, self.sconfig.port, 
                             TransportGSClientFactory(self.fromGSClientToGSServer, self.fromGSServerToGSClient))
@@ -63,6 +72,7 @@ class ServerThread(threading.Thread):
         self.homedir = config.homedir
         self.commands = commands
         threading.Thread.__init__(self)
+
     def run(self):
         reactor.listenTCP(self.port, TransportServerFactory(self.commands, self.homedir))
         
@@ -92,9 +102,9 @@ if __name__ == "__main__":
     groundstation.start()
     sleep(1)
     # create and start worker thread
-    worker = WorkerThread(config.master, config.groundstation, config.worker)
-    worker.start()
-    sleep(1)
+    #worker = WorkerThread(config.master, config.groundstation, config.worker)
+    #worker.start()
+    #sleep(1)
     #gs0 = GroundStationThread(config.server, config.groundstation0)
     #gs1 = GroundStationThread(config.server, config.groundstation1)
     #gs2 = GroundStationThread(config.server, config.groundstation2)

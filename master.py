@@ -20,5 +20,7 @@ if __name__ == "__main__":
     # set up logging
     #log.startLogging(open('/var/log/master.log', 'w'))
     log.startLogging(sys.stdout)
+    reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
+                            TransportMasterClientFactory(fromMasterToMasterClient, fromMasterClientToMaster))
     reactor.listenTCP(config.master.port, TransportMasterFactory())
     reactor.run()

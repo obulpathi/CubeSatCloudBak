@@ -14,10 +14,11 @@ class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.status = IDLE 
-        
+                
     # received data      
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
+        log.msg(packet)
         if packet.flags == REGISTER:
             self.registerWorker(packet)
         elif packet.flags == "STATE":
@@ -90,7 +91,7 @@ class TransportMasterProtocol(protocol.Protocol):
 
 # Master factory
 class TransportMasterFactory(protocol.Factory):
-    def __init__(self, homedir):
+    def __init__(self, homedir, fromMasterToMasterClient, fromMasterClientToMaster):
         self.status = "START"
         self.address = "Master"
         self.mission = None
@@ -103,23 +104,35 @@ class TransportMasterFactory(protocol.Factory):
             os.mkdir(self.homedir + "/metadata")
         except OSError:
             pass
-        task.deferLater(reactor, 1, self.getMission)
-        
+        self.fromMasterToMasterClient = fromMasterToMasterClient
+        self.fromMasterClientToMaster = fromMasterClientToMaster
+        #task.deferLater(reactor, 1, self.getMission)
+        self.waiter = WaitForData(self.fromMasterClientToMaster, self.getData)
+        self.waiter.start()
+
+    def getData(self, packet):
+        log.msg("Received data from MasterCLient:")
+        if packet.flags == "REGISTER":
+            self.registerMasterClient()
+        else:
+            log.msg("Received data from MasterCLient: ##############################################")
+            log.msg(packet)
+                
     def buildProtocol(self, addr):
         transport = TransportMasterProtocol(self)
         self.transports.append(transport)
         return transport
     
-    def connected(self, transport):
-        task.deferLater(reactor, 5, self.getMission)
-        
+    def registerMasterClient(self):
+        log.msg("Do registritation stuff here >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        self.getMission()
+            
     def getMission(self):
         log.msg("Requesting for new mission")
-        for transport in self.transports:
-            if transport.status == REGISTERED:
-                transport.getMission()
-                return                
-        task.deferLater(reactor, 5, self.getMission)
+        packet = Packet("Master", "Receiver",
+                        "Master", "Server", 
+                        GET_MISSION, None, HEADERS_SIZE)
+        self.fromMasterToMasterClient.put(packet)
 
     def gotMission(self, mission):
         if mission:
@@ -307,7 +320,7 @@ class TransportMasterFactory(protocol.Factory):
 
     def senseMissionComplete(self, mission):
         log.msg("Sense Mission Accomplished")
-        # send a notification that current mission is complete
+        # send a notification that current mission is complete and fetch next
         self.missionComplete(mission)
             
     def storeMissionComplete(self):
@@ -324,7 +337,6 @@ class TransportMasterFactory(protocol.Factory):
         self.missionComplete(mission)
         
     def missionComplete(self, mission):
-        sleep(0.25)
         log.msg("Sending mission status")
         self.sendData("COMPLETED_MISSION", mission)
         self.mission = None

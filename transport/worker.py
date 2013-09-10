@@ -33,7 +33,8 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.mutex.acquire()
         try:
             packet = pickle.loads(packetstring)
-            if self.address == "Worker" and packet.flags & REGISTERED:
+            log.msg(packet)
+            if self.address == "Worker" and packet.flags == REGISTERED:
                 self.registered(packet)
             elif packet.destination == "Server":
                 self.forwardToServer(packetstring)
@@ -43,7 +44,7 @@ class TransportWorkerProtocol(protocol.Protocol):
                 self.noWork()
             elif packet.flags == "WORK":
                 self.gotWork(packet.payload)
-            elif packet.flags & CHUNK:
+            elif packet.flags == CHUNK:
                 self.receivedChunk(packet)
             else:
                 log.msg("Server said: %s" % packetstring)
@@ -69,14 +70,15 @@ class TransportWorkerProtocol(protocol.Protocol):
     def deregister(self):
         self.transport.loseConnection()
 
-    def getWork(self, work):
+    def getWork(self, work = None):
         packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", work, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
+        self.transport.doWrite()
     
     def noWork(self):
         log.msg("No work")
-        task.deferLater(reactor, 1, self.getWork, None)
+        task.deferLater(reactor, 1.0, self.getWork)
     
     def gotWork(self, work):
         if work.job == "STORE":
