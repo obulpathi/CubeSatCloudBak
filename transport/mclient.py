@@ -1,3 +1,4 @@
+import math
 import pickle
 
 from twisted.python import log
@@ -13,19 +14,58 @@ class TransportMasterClientProtocol(protocol.Protocol):
         self.address = None
         self.waiter = WaitForData(self.factory.fromMasterToMasterClient, self.getData)
         self.waiter.start()
+        self.fragments = ""
+        self.fragmentlength = 0
+        self.packetlength = 0
 
     def getData(self, packet):
+        log.msg("MasterClient: Got a packet from Master, sending it to gsserver")
         log.msg(packet)
-        self.transport.write(pickle.dumps(packet))
+        self.sendPacket(pickle.dumps(packet))
 
     def connectionMade(self):
         task.deferLater(reactor, 2, self.register)
-    
-    def dataReceived(self, packetstring):
-        packet = pickle.loads(packetstring)
+
+    # received data
+    def dataReceived(self, fragment):
+        # add the current fragment to fragments
+        if self.fragments:
+            log.msg("Received another fragment")
+            self.fragments = self.fragments + fragment
+            self.fragmentlength = self.fragmentlength + len(fragment)
+        else:
+            log.msg("Received a new fragment")
+            log.msg(fragment)
+            self.packetlength = int(fragment[:5])
+            self.fragmentlength = len(fragment)
+            self.fragments = fragment[5:]
+
+        # check if we received the whole packet
+        if self.fragmentlength == self.packetlength:
+            packet = pickle.loads(self.fragments)
+            self.fragments = ""
+            self.packetReceived(packet)
+        elif self.fragmentlength >= self.packetlength:
+            print(self.fragmentlength, self.packetlength)
+            print(self.fragments)
+            log.msg("Unhandled exception: self.fragmentlength >= self.packetlength")
+            exit(1)
+        else:
+            pass
+
+    # received a packet
+    def packetReceived(self, packet):
         log.msg(packet)
         self.factory.fromMasterClientToMaster.put(packet)
-    
+
+    # send a packet, if needed using multiple fragments
+    def sendPacket(self, packetstring):
+        length = len(packetstring) + 5
+        packetstring = str(length).zfill(5) + packetstring
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            log.msg("Sending a fragment")
+            self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+                
     def register(self):
         packet = Packet("MasterClient", "Master", "MasterClient", "Master", REGISTER, None, HEADERS_SIZE)
         self.factory.fromMasterClientToMaster.put(packet)

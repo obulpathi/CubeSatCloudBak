@@ -21,6 +21,7 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.cswaiter.start()
         self.ccwaiter.start()
         self.mutex = Lock()
+        self.fragments = ""
 
     def getData(self, data):
         self.transport.write(data)
@@ -30,26 +31,32 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.register()
     
     def dataReceived(self, packetstring):
+        # lock the mutex
         self.mutex.acquire()
+        packet = None
         try:
-            packet = pickle.loads(packetstring)
-            log.msg(packet)
-            if self.address == "Worker" and packet.flags == REGISTERED:
-                self.registered(packet)
-            elif packet.destination == "Server":
-                self.forwardToServer(packetstring)
-            elif packet.destination != self.address:
-                self.forwardToChild(packet)
-            elif packet.flags == "NO_WORK":
-                self.noWork()
-            elif packet.flags == "WORK":
-                self.gotWork(packet.payload)
-            elif packet.flags == CHUNK:
-                self.receivedChunk(packet)
-            else:
-                log.msg("Server said: %s" % packetstring)
-        finally:
-            self.mutex.release()
+            packet = pickle.loads(self.fragments + packetstring)
+            self.fragments = ""
+        except:
+            self.fragments = self.fragments + packetstring
+            return
+        log.msg(packet)
+        if self.address == "Worker" and packet.flags == REGISTERED:
+            self.registered(packet)
+        elif packet.destination == "Server":
+            self.forwardToServer(packetstring)
+        elif packet.destination != self.address:
+            self.forwardToChild(packet)
+        elif packet.flags == "NO_WORK":
+            self.noWork()
+        elif packet.flags == "WORK":
+            self.gotWork(packet.payload)
+        elif packet.flags == CHUNK:
+            self.receivedChunk(packet)
+        else:
+            log.msg("Server said: %s" % packetstring)
+        # release the mutex
+        self.mutex.release()
     
     def register(self):
         packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)

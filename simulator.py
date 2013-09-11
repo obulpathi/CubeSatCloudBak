@@ -102,6 +102,7 @@ if __name__ == "__main__":
     groundstation.start()
     sleep(1)
     # create and start ground stations
+    """
     gs0 = GroundStationThread(config.server, config.groundstation0)
     gs1 = GroundStationThread(config.server, config.groundstation1)
     gs2 = GroundStationThread(config.server, config.groundstation2)
@@ -118,6 +119,7 @@ if __name__ == "__main__":
     worker1.start()
     worker2.start()
     sleep(1)
+    """
     # start the reactor
     reactor.run()
     # wait for reactor and all threads to finish

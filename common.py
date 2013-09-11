@@ -3,8 +3,6 @@
 import threading
 from collections import namedtuple
 
-# formats
-# Chunk = (ID, CHUNK_SIZE, CubeSat)
 # Packet = (sender, receiver, source, destination, datatype, payload, latency, size)
 
 # GENERAL CONSTANTS
@@ -17,9 +15,10 @@ GHz = 1000000000
 MILLION = 1000000
 BILLION = 1000000000
 
+MAX_PACKET_SIZE = 10000
+
 # chunk constants
 CHUNK_SIZE = 65536
-CHUNK_VARIATION = 16384
 
 # commands
 ACK = "ACK"

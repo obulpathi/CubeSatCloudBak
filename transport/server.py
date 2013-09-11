@@ -1,4 +1,5 @@
 import os
+import math
 import pickle
 from time import sleep
 from uuid import uuid4
@@ -14,10 +15,39 @@ class TransportServerProtocol(protocol.Protocol):
     def __init__(self, factory, homedir):
         self.factory = factory
         self.homedir = homedir
+        self.fragments = ""
+        self.fragmentlength = 0
+        self.packetlength = 0
 
-    # received data                        
-    def dataReceived(self, packetstring):
-        packet = pickle.loads(packetstring)
+    # received data
+    def dataReceived(self, fragment):
+        log.msg("Server: Received a fragment")
+        # add the current fragment to fragments
+        if self.fragments:
+            log.msg("Server: Received another fragment")
+            self.fragments = self.fragments + fragment
+            self.fragmentlength = self.fragmentlength + len(fragment)
+        else:
+            log.msg("Received a new fragment")
+            self.packetlength = int(fragment[:5])
+            self.fragmentlength = len(fragment)
+            self.fragments = fragment[5:]
+
+        # check if we received the whole packet
+        if self.fragmentlength == self.packetlength:
+            packet = pickle.loads(self.fragments)
+            self.fragments = ""
+            self.packetReceived(packet) 
+        elif self.fragmentlength >= self.packetlength:
+            print(self.fragmentlength, self.packetlength)
+            print(self.fragments)
+            log.msg("Unhandled exception: self.fragmentlength >= self.packetlength")
+            exit(1)
+        else:
+            log.msg("Server: Received a fragment, waiting for more")
+
+    # received a packet
+    def packetReceived(self, packet):
         log.msg(packet)
         if packet.flags == REGISTER:
             if packet.source == "GroundStation":
@@ -37,6 +67,13 @@ class TransportServerProtocol(protocol.Protocol):
         else:
             log.msg("Received unkown packet: %s", str(packet))
     
+    # send a packet, if needed using multiple fragments
+    def sendPacket(self, packetstring):
+        length = len(packetstring) + 5
+        packetstring = str(length).zfill(5) + packetstring
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+            
     # register groundstation
     def registerGroundStation(self, packet):
         log.msg("Registered ground station")
@@ -45,7 +82,7 @@ class TransportServerProtocol(protocol.Protocol):
 						REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         log.msg(packet)
-        self.transport.write(packetstring)
+        self.sendPacket(packetstring)
     
     # unregister what?
     def unregister(self, packet):
@@ -59,7 +96,7 @@ class TransportServerProtocol(protocol.Protocol):
                             REGISTERED, None, HEADERS_SIZE)
         packetstring = pickle.dumps(new_packet)
         log.msg(new_packet)
-        self.transport.write(packetstring)
+        self.sendPacket(packetstring)
 
     # get mission to ground station
     def getMission(self, receiver):
@@ -68,7 +105,7 @@ class TransportServerProtocol(protocol.Protocol):
                         MISSION, mission, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         log.msg(packet)
-        self.transport.write(packetstring)
+        self.sendPacket(packetstring)
 
     # received a chunk: is it better to save the chunk data to file here
     # or should we do it ServerFactory?: Which one is better

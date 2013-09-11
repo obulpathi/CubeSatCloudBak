@@ -13,17 +13,14 @@ class TransportGSServerProtocol(protocol.Protocol):
         self.waiter.start()
 
     def getData(self, packetstring):
+        log.msg("GSServer: Got a packet, uplinking to worker")
         self.transport.write(packetstring)
-    
-    def connectionMade(self):
-        log.msg("Connection made between GSServer and CSClient")
              
     def dataReceived(self, packetstring):
+        log.msg("GSServer: Got a packet, sending GSClient")
         self.factory.fromGSServerToGSClient.put(packetstring)
-        
-    def forwardToChild(self, packet):
-        log.msg("data received from master")
-    
+
+
 class TransportGSServerFactory(protocol.Factory):
     def __init__(self, fromGSClientToGSServer, fromGSServerToGSClient):
         self.fromGSClientToGSServer = fromGSClientToGSServer
