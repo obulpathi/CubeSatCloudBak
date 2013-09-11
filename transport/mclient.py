@@ -14,19 +14,19 @@ class TransportMasterClientProtocol(protocol.Protocol):
         self.waiter = WaitForData(self.factory.fromMasterToMasterClient, self.getData)
         self.waiter.start()
 
-    def getData(self, data):
-        log.msg(data)
-        self.transport.write(pickle.dumps(data))
+    def getData(self, packet):
+        log.msg(packet)
+        self.transport.write(pickle.dumps(packet))
 
     def connectionMade(self):
         task.deferLater(reactor, 2, self.register)
     
     def dataReceived(self, packetstring):
         packet = pickle.loads(packetstring)
-        self.factory.fromMasterToMasterClient.put(packet)
+        log.msg(packet)
+        self.factory.fromMasterClientToMaster.put(packet)
     
     def register(self):
-        log.msg("sending data from master client to master >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         packet = Packet("MasterClient", "Master", "MasterClient", "Master", REGISTER, None, HEADERS_SIZE)
         self.factory.fromMasterClientToMaster.put(packet)
         
@@ -35,7 +35,7 @@ class TransportMasterClientProtocol(protocol.Protocol):
         self.address = packet.payload
         self.status = REGISTERED
         
-    def deregister1(self):
+    def deregister(self):
         self.transport.loseConnection()
         
             

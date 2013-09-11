@@ -98,6 +98,7 @@ class TransportMasterFactory(protocol.Factory):
         self.transports = []
         self.registrationCount = 0
         self.homedir = homedir
+        self.fileMap = {}
         self.metadata = {}
         try:
             os.mkdir(self.homedir)
@@ -111,11 +112,13 @@ class TransportMasterFactory(protocol.Factory):
         self.waiter.start()
 
     def getData(self, packet):
-        log.msg("Received data from MasterCLient:")
+        log.msg(packet)
         if packet.flags == "REGISTER":
             self.registerMasterClient()
+        elif packet.flags == "MISSION":
+            self.gotMission(packet.payload)
         else:
-            log.msg("Received data from MasterCLient: ##############################################")
+            log.msg("Received unknown packet from Master Client: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
             log.msg(packet)
                 
     def buildProtocol(self, addr):
@@ -124,7 +127,7 @@ class TransportMasterFactory(protocol.Factory):
         return transport
     
     def registerMasterClient(self):
-        log.msg("Do registritation stuff here >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        log.msg("Do registritation stuff here")
         self.getMission()
             
     def getMission(self):
@@ -143,11 +146,12 @@ class TransportMasterFactory(protocol.Factory):
             log.msg("No mission")
             task.deferLater(reactor, 5, self.getMission)
 
-    def sendData(self, flags, data):
-        for transport in self.transports:
-            if transport.status == REGISTERED:
-                transport.sendData(flags, data)
-                        
+    def sendData(self, flags, payload):
+        packet = Packet("Master", "Receiver",
+                        "Master", "Server", 
+                        flags, payload, HEADERS_SIZE)
+        self.fromMasterToMasterClient.put(packet)
+    
     def sendMetadata(self, metadata):
         self.sendData("METADATA", metadata)
         log.msg("Sent metadata")
@@ -173,12 +177,13 @@ class TransportMasterFactory(protocol.Factory):
     
     def getStoreWork(self, worker):
         log.msg("Store work requested by worker")
+        directory = self.metadata["directory"]
         for chunk in self.chunks.itervalues():
             if chunk.status == "UNASSIGNED":
                 chunk.worker = worker
                 chunk.status = "ASSIGNED"
-                data = open(chunk.name).read()
-                work = Work(chunk.uuid, "STORE", os.path.split(chunk.name)[1], data)
+                data = open(directory + chunk.name).read()
+                work = Work(chunk.uuid, "STORE", chunk.name, data)
                 log.msg(chunk)
                 return work
         # no work: set a callback to check if mission is complete and return
@@ -191,11 +196,12 @@ class TransportMasterFactory(protocol.Factory):
         
     def getDownlinkWork(self, worker):
         log.msg("Downlink work requested by worker")
-        chunks = self.metadata[worker]
+        chunkMap = self.metadata["chunkMap"]
+        chunks = chunkMap.get(worker, [])
         for chunk in chunks:
             if chunk.status == "UNASSIGNED":
                 chunk.status = "ASSIGNED"
-                work = Work(chunk.uuid, "DOWNLINK", os.path.split(chunk.name)[1], None)
+                work = Work(chunk.uuid, "DOWNLINK", chunk.name, None)
                 log.msg(work)
                 return work
         # no work: check if mission is complete
@@ -215,14 +221,16 @@ class TransportMasterFactory(protocol.Factory):
 
     def finishedStoreWork(self, work):
         chunk = self.chunks[work.uuid]
-        if self.metadata.get(chunk.worker):
-            self.metadata[chunk.worker].append(chunk)
+        chunkMap = self.metadata["chunkMap"]
+        if chunkMap.get(chunk.worker):
+            chunkMap[chunk.worker].append(chunk)
         else:
-            self.metadata[chunk.worker] = [chunk]
+            chunkMap[chunk.worker] = [chunk]
         del self.chunks[work.uuid]
     
     def finishedDownlinkWork(self, work, worker):
-        chunks = self.metadata[worker]
+        chunkMap = self.metadata["chunkMap"]
+        chunks = chunkMap[worker]
         for chunk in chunks:
             if chunk.uuid == work.uuid:
                 chunk.status = "FINISHED"
@@ -259,7 +267,7 @@ class TransportMasterFactory(protocol.Factory):
     def store(self, mission):
         log.msg("Executing storing mission: ")
         # split the image into chunks
-        self.chunks = utils.splitImageIntoChunks(mission.filename)
+        self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename)
         # mission is ready to be executed
         self.mission = mission
 
@@ -271,12 +279,14 @@ class TransportMasterFactory(protocol.Factory):
     # downlink the given file
     def downlink(self, mission):
         log.msg(mission)
-        self.loadMetadata(None)
+        self.loadMetadata(mission.filename)
         self.mission = mission
 
     # load the metadata for the file
     def loadMetadata(self, filename):
-        for chunks in self.metadata.itervalues():
+        self.metadata = self.fileMap[filename]
+        chunkMap = self.metadata["chunkMap"]
+        for chunks in chunkMap.itervalues():
             for chunk in chunks:
                 chunk.status = "UNASSIGNED"
         
@@ -312,7 +322,8 @@ class TransportMasterFactory(protocol.Factory):
         return False
     
     def isDownlinkMissionComplete(self):
-        for chunks in self.metadata.itervalues():
+        chunkMap = self.metadata["chunkMap"]
+        for chunks in chunkMap.itervalues():
             for chunk in chunks:
                 if chunk.status != "FINISHED":
                     return False
@@ -328,6 +339,7 @@ class TransportMasterFactory(protocol.Factory):
         # send the metadata
         sleep(0.25)
         log.msg("sending metadata")
+        self.fileMap[self.metadata["filename"]] = self.metadata
         self.sendMetadata(self.metadata)
         utils.saveMetadata(self.metadata)
         task.deferLater(reactor, 1, self.getMission)

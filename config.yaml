@@ -19,32 +19,30 @@ master:
     address: localhost
     port: 8000
     homedir: /home/obulpathi/phd/cloud/data/master/
-
-worker:
-    address: localhost
-    port: 8008
-    homedir: /home/obulpathi/phd/cloud/data/
     
 groundstation0:
     address: localhost
-    port: 4004
+    port: 4005
 
 groundstation1:
     address: localhost
-    port: 4005
+    port: 4006
 
 groundstation2:
     address: localhost
-    port: 4006
+    port: 4007
     
 worker0:
     address: localhost
-    port: 8008
+    port: 8009
+    homedir: /home/obulpathi/phd/cloud/data/
     
 worker1:
     address: localhost
-    port: 8008
+    port: 8010
+    homedir: /home/obulpathi/phd/cloud/data/
 
 worker2:
     address: localhost
-    port: 8009
+    port: 8011
+    homedir: /home/obulpathi/phd/cloud/data/

@@ -101,24 +101,24 @@ if __name__ == "__main__":
     groundstation = GroundStationThread(config.server, config.groundstation)
     groundstation.start()
     sleep(1)
-    # create and start worker thread
-    #worker = WorkerThread(config.master, config.groundstation, config.worker)
-    #worker.start()
-    #sleep(1)
-    #gs0 = GroundStationThread(config.server, config.groundstation0)
-    #gs1 = GroundStationThread(config.server, config.groundstation1)
-    #gs2 = GroundStationThread(config.server, config.groundstation2)
-    #gs1.start()
-    #gs2.start()
+    # create and start ground stations
+    gs0 = GroundStationThread(config.server, config.groundstation0)
+    gs1 = GroundStationThread(config.server, config.groundstation1)
+    gs2 = GroundStationThread(config.server, config.groundstation2)
+    gs0.start()
+    gs1.start()
+    gs2.start()
+    sleep(1)
     # create worker threads: mconfig, gsconfig, worker
-    #worker0 = WorkerThread(config.master, config.groundstation0, config.worker0)
-    #worker1 = WorkerThread(config.master, config.groundstation1, config.worker1)
-    #worker2 = WorkerThread(config.master, config.groundstation2, config.worker2)
+    worker0 = WorkerThread(config.master, config.groundstation0, config.worker0)
+    worker1 = WorkerThread(config.master, config.groundstation1, config.worker1)
+    worker2 = WorkerThread(config.master, config.groundstation2, config.worker2)
     # create ground station threads
-    #worker0.start()
-    #worker1.start()
-    #worker2.start()
+    worker0.start()
+    worker1.start()
+    worker2.start()
+    sleep(1)
     # start the reactor
     reactor.run()
-    # wait for all threads to finish
+    # wait for reactor and all threads to finish
     # end simulation

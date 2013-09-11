@@ -47,11 +47,8 @@ class TransportGSClientProtocol(protocol.Protocol):
         log.msg("TODO: Deregistration")
         self.transport.loseConnection()
     
-    def downlinkFromCubeSat(self, packet):
-        self.transport.write(packetstring)
-        log.msg(packet)
-    
     def uplinkToCubeSat(self, packet):
+        log.msg("Groung station: Uplinking to CubeSat >>>>>>>>>>>>>>>>>>")
         self.factory.fromGSClientToGSServer.put(packet)
 
 

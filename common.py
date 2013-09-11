@@ -183,7 +183,13 @@ class Mission(object):
                    ", lat: " + self.lat + ", lon: " + self.lon
         else:
             return "Mission: " + self.operation + ", filename: " + self.filename + ", UUID: " + str(self.uuid)
-        
+
+class Metadata(object):
+    def __init__(self):
+        pass
+    def __repr__(self):
+        return "Metadata >>>>>>>>>>>>>>>>>>>>>"
+                
 class WaitForData(threading.Thread):
     def __init__(self, queue, callback):
         self.queue = queue

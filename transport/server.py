@@ -87,6 +87,7 @@ class TransportServerFactory(protocol.Factory):
         self.buildMissions(commands)
         self.registrationCount = 100
         self.homedir = homedir
+        self.fileMap = {}
         try:
             os.mkdir(homedir)
             os.mkdir(homedir + "images/")
@@ -126,7 +127,7 @@ class TransportServerFactory(protocol.Factory):
     def receivedMetadata(self, metadata):
         log.msg("Received metadata")
         log.msg(metadata)
-        self.metadata = metadata
+        self.fileMap[metadata["filename"]] = metadata
 
     def finishedMission(self, mission):
         if not mission:
@@ -138,10 +139,10 @@ class TransportServerFactory(protocol.Factory):
         elif mission.operation == "PROCESS":
             pass
         elif mission.operation == "DOWNLINK":
-            self.finishedDownlinkMission(self.homedir + "image.jpg")
+            self.finishedDownlinkMission("image.jpg")
         else:
             log.msg("Finished unknown mission: %s", str(mission))
 
     def finishedDownlinkMission(self, filename):
-        utils.stichChunksIntoImage(self.homedir + "images/", filename, self.metadata) 
+        utils.stichChunksIntoImage(self.homedir + "images/", self.homedir + filename, self.fileMap[filename]) 
         log.msg("Downlink Mission Complete")
