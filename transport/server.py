@@ -40,7 +40,7 @@ class TransportServerProtocol(protocol.Protocol):
             self.packetReceived(packet)
         elif self.fragmentlength >= self.packetlength:
             print(self.fragmentlength, self.packetlength)
-            log.msg("self.fragmentlength >= self.packetlength ################################################################################")
+            log.msg("self.fragmentlength >= self.packetlength ##############################################")
             packet = self.fragments[:self.packetlength-6]
             self.fragmentlength = self.fragmentlength - self.packetlength
             self.packetlength = self.fragments[self.packetlength-6:self.packetlength]
@@ -113,7 +113,6 @@ class TransportServerProtocol(protocol.Protocol):
     # or should we do it ServerFactory?: Which one is better
     def receivedChunk(self, chunk):
         log.msg("Received chunk >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        sleep(2)
         log.msg(chunk.filename)
         filename = self.homedir + "images/" + chunk.filename
         handler = open(filename, "w")
@@ -184,7 +183,7 @@ class TransportServerFactory(protocol.Factory):
             log.msg("Finished unknown mission: %s", str(mission))
 
     def finishedDownlinkMission(self, filename):
-        log.msg("Finished downlink mission #####################################################################################################")
-        sleep(60)
+        log.msg("Finished downlink mission ##################")
+        sleep(5)
         utils.stichChunksIntoImage(self.homedir + "images/", self.homedir + filename, self.fileMap[filename]) 
         log.msg("Downlink Mission Complete")

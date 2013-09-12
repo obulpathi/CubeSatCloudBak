@@ -148,8 +148,7 @@ class TransportWorkerProtocol(protocol.Protocol):
         packet = Packet(self.address, "Receiver", self.address, "Server", "CHUNK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.forwardToServer(packetstring)
-        sleep(1)
-        self.getWork(Work(work.uuid, work.job, work.filename, None))
+        task.deferLater(reactor, 5.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
                    
     def forwardToServer(self, packetstring):
         length = len(packetstring) + 6
