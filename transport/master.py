@@ -234,12 +234,11 @@ class TransportMasterFactory(protocol.Factory):
         for chunk in chunks:
             if chunk.status == "UNASSIGNED":
                 chunk.status = "ASSIGNED"
-                work = Work(chunk.uuid, "PROCESS", chunk.name, None)
+                work = Work(chunk.uuid, "PROCESS", chunk.name, self.mission.output.split(".")[0])
                 log.msg(work)
                 return work
         # no work: check if mission is complete
-        if self.isMissionComplete():
-            log.msg("Hitting is mission complete>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        if self.isProcessMissionComplete():
             self.processMissionComplete(self.mission)
         
     def getDownlinkWork(self, worker):
@@ -360,7 +359,6 @@ class TransportMasterFactory(protocol.Factory):
             if self.isStoreMissionComplete():
                 self.mission = None
                 self.storeMissionComplete()
-                # task.deferLater(reactor, 0.05, self.storeMissionComplete)
                 return True
         elif self.mission.operation == PROCESS:
             return self.isProcessMissionComplete()
@@ -378,7 +376,12 @@ class TransportMasterFactory(protocol.Factory):
         return True
     
     def isProcessMissionComplete(self):
-        return False
+        chunkMap = self.metadata["chunkMap"]
+        for chunks in chunkMap.itervalues():
+            for chunk in chunks:
+                if chunk.status != "FINISHED":
+                    return False
+        return True
     
     def isDownlinkMissionComplete(self):
         chunkMap = self.metadata["chunkMap"]
@@ -403,6 +406,26 @@ class TransportMasterFactory(protocol.Factory):
         utils.saveMetadata(self.metadata)
         task.deferLater(reactor, 1, self.getMission)
 
+    def processMissionComplete(self, mission):
+        log.msg("Process Mission Accomplished")
+        log.msg(self.metadata)
+        log.msg(mission)
+        subdirname = mission.output.split(".")[0] + "/"
+        # making changes to metadata
+        chunkMap = self.metadata["chunkMap"]
+        for chunks in chunkMap.itervalues():
+            for chunk in chunks:
+                chunk.name = subdirname + os.path.split(chunk.name)[1]
+        self.metadata["directory"] = os.path.split(self.metadata["directory"])[0] + "/" + subdirname
+        self.metadata["filename"] = mission.output
+        log.msg(self.metadata)
+        # send the metadata
+        log.msg("sending metadata")
+        self.fileMap[self.metadata["filename"]] = self.metadata
+        self.sendMetadata(self.metadata)
+        utils.saveMetadata(self.metadata)
+        task.deferLater(reactor, 1, self.getMission)
+        
     def downlinkMissionComplete(self, mission):
         log.msg("Downlink Mission Accomplished")
         self.missionComplete(mission)

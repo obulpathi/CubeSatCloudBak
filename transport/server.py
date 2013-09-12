@@ -41,10 +41,12 @@ class TransportServerProtocol(protocol.Protocol):
         elif self.fragmentlength >= self.packetlength:
             print(self.fragmentlength, self.packetlength)
             log.msg("self.fragmentlength >= self.packetlength ##############################################")
-            packet = self.fragments[:self.packetlength-6]
+            packetstring = self.fragments[:self.packetlength-6]
             self.fragmentlength = self.fragmentlength - self.packetlength
             self.packetlength = self.fragments[self.packetlength-6:self.packetlength]
             self.fragments = self.fragments[int(self.packetlength):]
+            packet = pickle.loads(packetstring)
+            self.packetReceived(packet)
         else:
             log.msg("Server: Received a fragment, waiting for more")
 
@@ -130,6 +132,7 @@ class TransportServerFactory(protocol.Factory):
         try:
             os.mkdir(homedir)
             os.mkdir(homedir + "images/")
+            os.mkdir(homedir + "images/results/")
             os.mkdir(homedir + "metadata/")
         except OSError:
             log.msg("OSError: Unable to create data directories, exiting")
@@ -151,6 +154,8 @@ class TransportServerFactory(protocol.Factory):
             if command.operation == SENSE:
                 mission.lat = command.lat
                 mission.lon = command.lon
+            if command.operation == PROCESS:
+                mission.output = command.output
             self.missions.append(mission)
         
     def getMission(self):

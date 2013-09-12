@@ -34,9 +34,10 @@ def splitImageIntoChunks(filename):
     image = Image.open(filename)
     width = image.size[0]
     height = image.size[1]
+    prefix = filename.split(".")[0] + "/"
     # create data subdirectory for this file
-    directory = "/home/obulpathi/phd/cloud/data/master/" + filename.split(".")[0] + "/"
-    os.mkdir(directory)
+    directory = "/home/obulpathi/phd/cloud/data/master/"
+    os.mkdir(directory + prefix)
     count = 0 # chunk counter
     for y in range(0, int(math.ceil(float(height)/chunk_y))):
         for x in range(0, int(math.ceil(float(width)/chunk_x))):
@@ -46,11 +47,11 @@ def splitImageIntoChunks(filename):
             bottom = min((y+1) * chunk_y, height)
             # box = (left, top, right, bottom)
             data = image.crop((left, top, right, bottom))
-            chunkname = directory + str(count) + ".jpg"
+            chunkname = directory + prefix + str(count) + ".jpg"
             data.save(chunkname)
             size = os.stat(chunkname).st_size
             box = Box(left, top, right, bottom)
-            chunk = Chunk(uuid4(), os.path.split(chunkname)[1], size, box)
+            chunk = Chunk(uuid4(), prefix + os.path.split(chunkname)[1], size, box)
             chunks[chunk.uuid] = chunk
             count = count + 1
     metadata["filename"] = filename

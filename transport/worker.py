@@ -132,7 +132,10 @@ class TransportWorkerProtocol(protocol.Protocol):
             log.msg(work)
 
     def store(self, work):
-        # modify the filename here
+        # create the directory, if needed
+        directory = self.homedir + os.path.split(work.filename)[0]
+        if not os.path.exists(directory):
+            os.mkdir(directory)
         chunk = open(self.homedir + work.filename, "w")
         chunk.write(work.payload)
         chunk.close()
@@ -144,7 +147,7 @@ class TransportWorkerProtocol(protocol.Protocol):
         log.msg(filename)
         image = Image.open(filename)
         edges = image.filter(ImageFilter.FIND_EDGES)
-        edges.save(self.homedir + "results/" + work.filename)
+        edges.save(self.homedir + work.payload + "/" + os.path.split(work.filename)[1])
         task.deferLater(reactor, 1.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
         
     def downlink(self, work):
