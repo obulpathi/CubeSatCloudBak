@@ -1,6 +1,8 @@
 import os
 import math
 import pickle
+import Image
+import ImageFilter
 
 from time import sleep
 from twisted.python import log
@@ -98,6 +100,7 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.homedir = self.homedir + str(self.address) + "/"
         try:
             os.mkdir(self.homedir)
+            os.mkdir(self.homedir + "results/")
         except OSError:
             log.msg("OSError: Unable to create home directory, exiting")
             exit()
@@ -136,8 +139,13 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.getWork(Work(work.uuid, work.job, work.filename, None))
     
     def process(self, work):
-        log.msg("TODO: PROCESS")
         log.msg(work)
+        filename = self.homedir + work.filename
+        log.msg(filename)
+        image = Image.open(filename)
+        edges = image.filter(ImageFilter.FIND_EDGES)
+        edges.save(self.homedir + "results/" + work.filename)
+        task.deferLater(reactor, 1.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
         
     def downlink(self, work):
         filename = self.homedir + work.filename

@@ -229,7 +229,18 @@ class TransportMasterFactory(protocol.Factory):
 
     def getProcessWork(self, worker):
         log.msg("Process work requested by worker >>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        return "Process"
+        chunkMap = self.metadata["chunkMap"]
+        chunks = chunkMap.get(worker, [])
+        for chunk in chunks:
+            if chunk.status == "UNASSIGNED":
+                chunk.status = "ASSIGNED"
+                work = Work(chunk.uuid, "PROCESS", chunk.name, None)
+                log.msg(work)
+                return work
+        # no work: check if mission is complete
+        if self.isMissionComplete():
+            log.msg("Hitting is mission complete>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            self.processMissionComplete(self.mission)
         
     def getDownlinkWork(self, worker):
         log.msg("Downlink work requested by worker")
@@ -249,7 +260,7 @@ class TransportMasterFactory(protocol.Factory):
         if self.mission.operation == STORE:
             self.finishedStoreWork(work)
         elif self.mission.operation == PROCESS:
-            self.finishedProcessWork(work)
+            self.finishedProcessWork(work, worker)
         elif self.mission.operation == DOWNLINK:
             self.finishedDownlinkWork(work, worker)
         else:
@@ -264,7 +275,16 @@ class TransportMasterFactory(protocol.Factory):
         else:
             chunkMap[chunk.worker] = [chunk]
         del self.chunks[work.uuid]
-    
+
+    def finishedProcessWork(self, work, worker):
+        chunkMap = self.metadata["chunkMap"]
+        chunks = chunkMap[worker]
+        for chunk in chunks:
+            if chunk.uuid == work.uuid:
+                chunk.status = "FINISHED"
+                return
+        log.msg("ERROR: Got unknown work item")
+            
     def finishedDownlinkWork(self, work, worker):
         chunkMap = self.metadata["chunkMap"]
         chunks = chunkMap[worker]
@@ -310,8 +330,10 @@ class TransportMasterFactory(protocol.Factory):
 
     # process the given file and downlink
     def process(self, mission):
-        log.msg("MapReduce mission")
-        self.getMission()
+        self.mission = mission
+        self.loadMetadata(mission.filename)
+        log.msg("MapReduce mission >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        #self.getMission()
 
     # downlink the given file
     def downlink(self, mission):
