@@ -1,4 +1,5 @@
 import os
+import math
 import pickle
 
 from time import sleep
@@ -22,24 +23,46 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.ccwaiter.start()
         self.mutex = Lock()
         self.fragments = ""
+        self.fragmentlength = 0
+        self.packetlength = 0
 
     def getData(self, data):
-        self.transport.write(data)
+        self.sendPacket(data)
 
     def connectionMade(self):
-        log.msg("Worker connection made")
+        log.msg("Worker connection made >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.")
         self.register()
-    
-    def dataReceived(self, packetstring):
-        # lock the mutex
+
+    # received data
+    def dataReceived(self, fragment):
         self.mutex.acquire()
-        packet = None
-        try:
-            packet = pickle.loads(self.fragments + packetstring)
+        # add the current fragment to fragments
+        if self.fragments:
+            log.msg("Received another fragment")
+            self.fragments = self.fragments + fragment
+            self.fragmentlength = self.fragmentlength + len(fragment)
+        else:
+            log.msg("Received a new fragment")
+            self.packetlength = int(fragment[:6])
+            self.fragmentlength = len(fragment)
+            self.fragments = fragment[6:]
+
+        # check if we received the whole packet
+        if self.fragmentlength == self.packetlength:
+            packet = pickle.loads(self.fragments)
             self.fragments = ""
-        except:
-            self.fragments = self.fragments + packetstring
-            return
+            self.packetReceived(packet)
+        elif self.fragmentlength >= self.packetlength:
+            print(self.fragmentlength, self.packetlength)
+            print(self.fragments)
+            log.msg("Unhandled exception: self.fragmentlength >= self.packetlength")
+            exit(1)
+        else:
+            pass
+        self.mutex.release()
+
+    # recevei packet    
+    def packetReceived(self, packet):
         log.msg(packet)
         if self.address == "Worker" and packet.flags == REGISTERED:
             self.registered(packet)
@@ -56,12 +79,19 @@ class TransportWorkerProtocol(protocol.Protocol):
         else:
             log.msg("Server said: %s" % packetstring)
         # release the mutex
-        self.mutex.release()
+
+    # send a packet, if needed using multiple fragments
+    def sendPacket(self, packetstring):
+        length = len(packetstring) + 6
+        packetstring = str(length).zfill(6) + packetstring
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            log.msg("Sending a fragment")
+            self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
     
     def register(self):
         packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
-        data = pickle.dumps(packet)
-        self.transport.write(data)
+        packetstring = pickle.dumps(packet)
+        self.sendPacket(packetstring)
         
     def registered(self, packet):
         self.address = packet.payload
@@ -79,9 +109,9 @@ class TransportWorkerProtocol(protocol.Protocol):
 
     def getWork(self, work = None):
         packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", work, HEADERS_SIZE)
-        data = pickle.dumps(packet)
-        self.transport.write(data)
-        self.transport.doWrite()
+        packetstring = pickle.dumps(packet)
+        self.sendPacket(packetstring)
+        #self.transport.doWrite()
     
     def noWork(self):
         log.msg("No work")
@@ -122,7 +152,11 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.getWork(Work(work.uuid, work.job, work.filename, None))
                    
     def forwardToServer(self, packetstring):
-        self.factory.fromWorkerToCSClient.put(packetstring)
+        length = len(packetstring) + 6
+        packetstring = str(length).zfill(6) + packetstring
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            log.msg("Sending a fragment")
+            self.factory.fromWorkerToCSClient.put(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
             
     def forwardToChild(self, packet):
         self.factory.fromWorkerToCSServer.put(packet)

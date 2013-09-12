@@ -1,4 +1,5 @@
 import os
+import math
 import pickle
 from time import sleep
 
@@ -14,10 +15,38 @@ class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.status = IDLE 
-                
-    # received data      
-    def dataReceived(self, packetstring):
-        packet = pickle.loads(packetstring)
+        self.fragments = ""
+        self.fragmentlength = 0
+        self.packetlength = 0
+        
+    # received data
+    def dataReceived(self, fragment):
+        # add the current fragment to fragments
+        if self.fragments:
+            log.msg("Received another fragment")
+            self.fragments = self.fragments + fragment
+            self.fragmentlength = self.fragmentlength + len(fragment)
+        else:
+            log.msg("Received a new fragment")
+            self.packetlength = int(fragment[:6])
+            self.fragmentlength = len(fragment)
+            self.fragments = fragment[6:]
+
+        # check if we received the whole packet
+        if self.fragmentlength == self.packetlength:
+            packet = pickle.loads(self.fragments)
+            self.fragments = ""
+            self.packetReceived(packet)
+        elif self.fragmentlength >= self.packetlength:
+            print(self.fragmentlength, self.packetlength)
+            print(self.fragments)
+            log.msg("Unhandled exception: self.fragmentlength >= self.packetlength")
+            exit(1)
+        else:
+            pass
+                            
+    # received a packet
+    def packetReceived(self, packet):
         log.msg(packet)
         if packet.flags == REGISTER:
             self.registerWorker(packet)
@@ -32,7 +61,15 @@ class TransportMasterProtocol(protocol.Protocol):
         else:
             log.msg(packet)
             log.msg("Unknown stuff")
-    
+
+    # send a packet, if needed using multiple fragments
+    def sendPacket(self, packetstring):
+        length = len(packetstring) + 6
+        packetstring = str(length).zfill(6) + packetstring
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            log.msg("Sending a fragment")
+            self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+                
     # register worker
     def registerWorker(self, packet):
         log.msg("registered worker")
@@ -41,7 +78,7 @@ class TransportMasterProtocol(protocol.Protocol):
                         self.factory.address, self.factory.registrationCount, 
                         REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
-        self.transport.write(packetstring)
+        self.sendPacket(packetstring)
         self.status = REGISTERED
     
     # get mission
@@ -78,7 +115,7 @@ class TransportMasterProtocol(protocol.Protocol):
                         self.factory.address, destination,
                         "NO_WORK", None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
-        self.transport.write(packetstring)
+        self.sendPacket(packetstring)
 
     # send work
     def sendWork(self, destination, work):
@@ -86,7 +123,7 @@ class TransportMasterProtocol(protocol.Protocol):
                         self.factory.address, destination,
                         "WORK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
-        self.transport.write(packetstring)
+        self.sendPacket(packetstring)
 
 
 # Master factory

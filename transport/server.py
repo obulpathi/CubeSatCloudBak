@@ -29,20 +29,22 @@ class TransportServerProtocol(protocol.Protocol):
             self.fragmentlength = self.fragmentlength + len(fragment)
         else:
             log.msg("Received a new fragment")
-            self.packetlength = int(fragment[:5])
+            self.packetlength = int(fragment[:6])
             self.fragmentlength = len(fragment)
-            self.fragments = fragment[5:]
+            self.fragments = fragment[6:]
 
         # check if we received the whole packet
         if self.fragmentlength == self.packetlength:
             packet = pickle.loads(self.fragments)
             self.fragments = ""
-            self.packetReceived(packet) 
+            self.packetReceived(packet)
         elif self.fragmentlength >= self.packetlength:
             print(self.fragmentlength, self.packetlength)
-            print(self.fragments)
-            log.msg("Unhandled exception: self.fragmentlength >= self.packetlength")
-            exit(1)
+            log.msg("self.fragmentlength >= self.packetlength ################################################################################")
+            packet = self.fragments[:self.packetlength]
+            self.packetlength = self.fragments[self.packetlength:self.packetlength+6]
+            self.fragments = self.fragments[self.packetlength + 6:]
+            self.fragmentslength = self.fragmentslength - 
         else:
             log.msg("Server: Received a fragment, waiting for more")
 
@@ -69,8 +71,8 @@ class TransportServerProtocol(protocol.Protocol):
     
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
-        length = len(packetstring) + 5
-        packetstring = str(length).zfill(5) + packetstring
+        length = len(packetstring) + 6
+        packetstring = str(length).zfill(6) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
             

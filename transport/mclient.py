@@ -35,10 +35,9 @@ class TransportMasterClientProtocol(protocol.Protocol):
             self.fragmentlength = self.fragmentlength + len(fragment)
         else:
             log.msg("Received a new fragment")
-            log.msg(fragment)
-            self.packetlength = int(fragment[:5])
+            self.packetlength = int(fragment[:6])
             self.fragmentlength = len(fragment)
-            self.fragments = fragment[5:]
+            self.fragments = fragment[6:]
 
         # check if we received the whole packet
         if self.fragmentlength == self.packetlength:
@@ -60,11 +59,14 @@ class TransportMasterClientProtocol(protocol.Protocol):
 
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
-        length = len(packetstring) + 5
-        packetstring = str(length).zfill(5) + packetstring
+        length = len(packetstring) + 6
+        packetstring = str(length).zfill(6) + packetstring
+        print(length, packetstring[:6])
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            log.msg("fgragment: %d\t len: %d" % (i, len(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])))
             log.msg("Sending a fragment")
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+            #self.transport.doWrite()
                 
     def register(self):
         packet = Packet("MasterClient", "Master", "MasterClient", "Master", REGISTER, None, HEADERS_SIZE)
