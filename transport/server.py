@@ -17,7 +17,7 @@ class TransportServerProtocol(protocol.Protocol):
         self.factory = factory
         self.homedir = homedir
         self.name = "Server"
-        self.mytransport = Transport(self.name)
+        self.mytransport = MyTransport(self.name)
         self.fragments = ""
         self.fragmentlength = 0
         self.packetlength = 0

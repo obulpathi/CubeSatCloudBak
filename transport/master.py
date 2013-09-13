@@ -16,7 +16,7 @@ class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.status = IDLE 
-        self.mytransport = Transport()
+        self.mytransport = MyTransport()
         
     # received data
     def dataReceived(self, fragment):

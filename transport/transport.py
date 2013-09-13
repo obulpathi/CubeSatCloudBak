@@ -2,8 +2,8 @@
 # undo any hardcoded stuff ... OK :)
 
 import pickle
-from twisted.python import log
 from cloud.common import *
+from twisted.python import log
 
 class MyTransport(object):
     def __init__(self, name = "Transport"):

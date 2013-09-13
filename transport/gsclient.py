@@ -8,6 +8,7 @@ from twisted.internet import reactor
 from twisted.internet import protocol
 
 from cloud.common import *
+from cloud.transport.transport import MyTransport
             
 class TransportGSClientProtocol(protocol.Protocol):
     def __init__(self, factory):
@@ -16,9 +17,7 @@ class TransportGSClientProtocol(protocol.Protocol):
         self.waiter = WaitForData(self.factory.fromGSServerToGSClient, self.getData)
         self.waiter.start()
         self.state = UNREGISTERED # whats the begin state?
-        self.fragments = ""
-        self.fragmentlength = 0
-        self.packetlength = 0
+        self.mytransport = MyTransport()
         
     def getData(self, packetstring):
         self.transport.write(packetstring)
@@ -29,28 +28,9 @@ class TransportGSClientProtocol(protocol.Protocol):
 
     # received data
     def dataReceived(self, fragment):
-        # add the current fragment to fragments
-        if self.fragments:
-            log.msg("Received another fragment")
-            self.fragments = self.fragments + fragment
-            self.fragmentlength = self.fragmentlength + len(fragment)
-        else:
-            log.msg("Received a new fragment")
-            self.packetlength = int(fragment[:6])
-            self.fragmentlength = len(fragment)
-            self.fragments = fragment[6:]
-
-        # check if we received the whole packet
-        if self.fragmentlength == self.packetlength:
-            packet = pickle.loads(self.fragments)
-            self.fragments = ""
+        packet = self.mytransport.dataReceived(fragment)
+        if packet:
             self.packetReceived(packet)
-        elif self.fragmentlength >= self.packetlength:
-            print(self.fragmentlength, self.packetlength)
-            log.msg("Unhandled exception: self.fragmentlength >= self.packetlength")
-            exit(1)
-        else:
-            pass
                 
     # received a packet
     def packetReceived(self, packet):
