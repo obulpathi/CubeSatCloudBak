@@ -10,45 +10,23 @@ from twisted.internet import protocol
 
 from cloud import utils
 from cloud.common import *
+from cloud.transport.transport import MyTransport
 
 class TransportServerProtocol(protocol.Protocol):
     def __init__(self, factory, homedir):
         self.factory = factory
         self.homedir = homedir
+        self.name = "Server"
+        self.mytransport = Transport(self.name)
         self.fragments = ""
         self.fragmentlength = 0
         self.packetlength = 0
 
     # received data
     def dataReceived(self, fragment):
-        log.msg("Server: Received a fragment")
-        # add the current fragment to fragments
-        if self.fragments:
-            log.msg("Server: Received another fragment")
-            self.fragments = self.fragments + fragment
-            self.fragmentlength = self.fragmentlength + len(fragment)
-        else:
-            log.msg("Received a new fragment")
-            self.packetlength = int(fragment[:6])
-            self.fragmentlength = len(fragment)
-            self.fragments = fragment[6:]
-
-        # check if we received the whole packet
-        if self.fragmentlength == self.packetlength:
-            packet = pickle.loads(self.fragments)
-            self.fragments = ""
+        packet = self.mytransport.dataReceived(fragment)
+        if packet:
             self.packetReceived(packet)
-        elif self.fragmentlength >= self.packetlength:
-            print(self.fragmentlength, self.packetlength)
-            log.msg("self.fragmentlength >= self.packetlength ##############################################")
-            packetstring = self.fragments[:self.packetlength-6]
-            self.fragmentlength = self.fragmentlength - self.packetlength
-            self.packetlength = self.fragments[self.packetlength-6:self.packetlength]
-            self.fragments = self.fragments[int(self.packetlength):]
-            packet = pickle.loads(packetstring)
-            self.packetReceived(packet)
-        else:
-            log.msg("Server: Received a fragment, waiting for more")
 
     # received a packet
     def packetReceived(self, packet):

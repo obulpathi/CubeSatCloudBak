@@ -28,8 +28,6 @@ BAD_PACKET = "BAD_PACKET"
 LAST_PACKET = "LAST_PACKET"
 DUMMY_PAYLOAD = "DUMMY_PAYLOAD"
 FINISHED_CHUNK = "FINISHED_CHUNK"
-COMMAND_IMAGE_DOWNLINK = "COMMAND_IMAGE_DOWNLINK"
-COMMAND_IMAGE_PROCESS_DOWNLINK = "COMMAND_IMAGE_PROCESS_DOWNLINK"
 
 # Link Layer definitions
 LL_ACK = "LL_ACK"
@@ -65,29 +63,12 @@ CS2CSLink = Link(MBPS, MB, 2, 64)
 chunk_x = 100
 chunk_y = 100
 
-# tasks, fileops, ... 
-Task = namedtuple('Task', 'ID flops')
-Fileops = namedtuple('Fileops', 'ID filename mode data')
-Configuration = namedtuple('Configuration', 'processor memory battery nic transciever power location tle')
-
 # missions
 #Mission = namedtuple('Mission', 'mission')
 #Torrent = namedtuple('Torrent', 'payload size chunks')
 #MapReduce = namedtuple('MapReduce', 'payload size chunks')
 
-# subsystems
-Power = namedtuple('Power', 'processor memory nic transciever eps maintainance')
-
 Box = namedtuple('Box', 'left top right bottom')
-
-"""
-class Box(object):
-    def __init__(self, left, top, right, bottom)
-        self.left = left
-        self.top = top
-        self.right = right
-        self.bottom = bottom
-"""
 
 #Work = namedtuple('Work', 'uuid job filename payload')
 
@@ -199,71 +180,7 @@ class WaitForData(threading.Thread):
             data = self.queue.get()
             self.callback(data)
 
-class LLPacket(object):
-    def __init__(self, id, size, payload, flags = 0x00):
-        self.id = id
-        self.size = size
-        self.payload = payload
-        self.flags = flags
-        
-    def __repr__(self):
-        return "ID: " + str(self.id) + ", Size: " + str(self.size) + ", Payload: " + str(self.payload) + ", Flags: " + str(self.flags)
-
-class Processor(object):
-	def __init__(self, config):
-		self.clock = config.clock
-		self.power = config.power
-		self.tasks = []
-
-class NIC(object):
-	def __init__(self, config):
-		self.bandwidth = config.bandwidth
-		self.transmit_queues = []
-		self.rxPacket = []
-
-class Memory(object):
-	def __init__(self, config):
-		self.size = config.size
-		self.bandwidth = config.bandwidth
-		self.tasks = []
-
-class Transciever(object):
-	def __init__(self, config):
-		pass
-
-class Battery(object):
-	def __init__(self, config):
-		self.capacity = config.capacity
-		self.charge = config.charge
-		self.charge_rate = config.charge_rate
-		self.max_current = config.max_current
-
-class Location(object):
-	def __init__(self, config):
-		pass
-
-class TLE(object):
-	def __init__(self, config):
-		pass
-		
-# Queue constructs
-class QItem(object):
-    def __init__(self, item, timer):
-        self.item = item
-        self.timer = timer
-    def __repr__(self):
-       return "Item: " + str(self.item) + "Timer: " + str(self.timer) 
-        
-def processQueue(queue, qname, logger):
-    if queue:
-        logger.debug(qname + " status: Item: " + str(queue[0].item) + " Timer: " + str(queue[0].timer))
-        queue[0].timer = queue[0].timer - 1
-        if queue[0].timer <= 0:
-            element = queue[0]
-            queue.remove(element)
-            return element.item
-
-# configuration
+# configuration object
 class Struct(object):
     def __init__(self, d):
         for key, value in d.items():

@@ -7,19 +7,27 @@ from uuid import uuid4
 from cloud.common import *
 
 # save the metadata into file
-def saveMetadata(metadata):
-    metadatadir = "/home/obulpathi/phd/cloud/data/master/metadata/"
-    filename = metadatadir + "image.jpg" # get the base name of the file here
+def saveMetadata(metadata, directory):
+    # reconstruct the whole file path
+    filename = directory + metadata["filename"]
+    # check if the file exists
+    if not os.path.isfile(filename):
+        log.msg("Error: no such file: %s exists" % filename)
+        exit(1)
+    log.msg("Saving metadata into the file: %s" % filename)
     metafile = open(filename, "w")
     metastring = pickle.dumps(metadata)
     metafile.write(metastring)
     metafile.close()
 
+# load the metadata from the given file
 # change the status of the chunks, after reading metadata        
 def loadMetadata(filename):
-    #log.msg("Loading metadata for the file: %s" % filename)
-    metadatadir = "/home/obulpathi/phd/cloud/data/master/metadata/"
-    filename = metadatadir + filename
+    log.msg("Loading metadata for the file: %s" % filename)
+    # check if the file exists
+    if not os.path.isfile(filename):
+        log.msg("Error: no such file: %s exists" % filename)
+        exit(1)
     metafile = open(filename)
     metastring = metafile.read()
     metafile.close()
@@ -27,16 +35,18 @@ def loadMetadata(filename):
     return metadata
     
 # split the remote sensing data into chunks
-#def splitImageIntoChunks(filename, directory):
-def splitImageIntoChunks(filename):
+def splitImageIntoChunks(filename, directory):
     metadata = {}
     chunks = {}
+    # check if the file exists
+    if not os.path.isfile(filename):
+        log.msg("Error: no such file: %s exists" % filename)
+        exit(1)
     image = Image.open(filename)
     width = image.size[0]
     height = image.size[1]
     prefix = filename.split(".")[0] + "/"
     # create data subdirectory for this file
-    directory = "/home/obulpathi/phd/cloud/data/master/"
     os.mkdir(directory + prefix)
     count = 0 # chunk counter
     for y in range(0, int(math.ceil(float(height)/chunk_y))):
@@ -64,9 +74,6 @@ def splitImageIntoChunks(filename):
 
 # stich chunks into image
 def stichChunksIntoImage(directory, filename, metadata):
-    print("##############################################################################################")
-    print("##############################################################################################")
-    print("##############################################################################################")
     width = metadata["width"]
     height = metadata["height"]
 
@@ -77,9 +84,13 @@ def stichChunksIntoImage(directory, filename, metadata):
     print(chunkMap)
     for chunks in chunkMap.itervalues():
         for chunk in chunks:
+            chunkname = directory + chunk.name
+            # check if the chunk exists
+            if not os.path.isfile(chunkname):
+                log.msg("Error: no such chunk: %s exists" % chunkname)
+                exit(1)
             # fetch the chunk
-            data = Image.open(directory + chunk.name)
-            print(chunk.box)
+            data = Image.open(chunkname)
             result.paste(data, (chunk.box.left, chunk.box.top))
     result.save(filename)
     return

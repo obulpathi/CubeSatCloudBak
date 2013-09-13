@@ -10,40 +10,19 @@ from twisted.internet import protocol
 
 from cloud import utils
 from cloud.common import *
+from cloud.transport.transport import MyTransport
 
 class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.status = IDLE 
-        self.fragments = ""
-        self.fragmentlength = 0
-        self.packetlength = 0
+        self.mytransport = Transport()
         
     # received data
     def dataReceived(self, fragment):
-        # add the current fragment to fragments
-        if self.fragments:
-            log.msg("Received another fragment")
-            self.fragments = self.fragments + fragment
-            self.fragmentlength = self.fragmentlength + len(fragment)
-        else:
-            log.msg("Received a new fragment")
-            self.packetlength = int(fragment[:6])
-            self.fragmentlength = len(fragment)
-            self.fragments = fragment[6:]
-
-        # check if we received the whole packet
-        if self.fragmentlength == self.packetlength:
-            packet = pickle.loads(self.fragments)
-            self.fragments = ""
+        packet = self.mytransport.dataReceived(fragment)
+        if packet:
             self.packetReceived(packet)
-        elif self.fragmentlength >= self.packetlength:
-            print(self.fragmentlength, self.packetlength)
-            print(self.fragments)
-            log.msg("Unhandled exception: self.fragmentlength >= self.packetlength")
-            exit(1)
-        else:
-            pass
                             
     # received a packet
     def packetReceived(self, packet):
@@ -135,11 +114,12 @@ class TransportMasterFactory(protocol.Factory):
         self.transports = []
         self.registrationCount = 0
         self.homedir = homedir
+        self.metadir = homedir + "/metadata"
         self.fileMap = {}
         self.metadata = {}
         try:
             os.mkdir(self.homedir)
-            os.mkdir(self.homedir + "/metadata")
+            os.mkdir(self.metadir)
         except OSError:
             pass
         self.fromMasterToMasterClient = fromMasterToMasterClient
@@ -323,7 +303,7 @@ class TransportMasterFactory(protocol.Factory):
     def store(self, mission):
         log.msg("Executing storing mission: ")
         # split the image into chunks
-        self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename)
+        self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename, self.homedir)
         # mission is ready to be executed
         self.mission = mission
 
@@ -403,7 +383,7 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("sending metadata")
         self.fileMap[self.metadata["filename"]] = self.metadata
         self.sendMetadata(self.metadata)
-        utils.saveMetadata(self.metadata)
+        utils.saveMetadata(self.metadata, self.metadir)
         task.deferLater(reactor, 1, self.getMission)
 
     def processMissionComplete(self, mission):
@@ -423,14 +403,14 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("sending metadata")
         self.fileMap[self.metadata["filename"]] = self.metadata
         #self.sendMetadata(self.metadata)
-        utils.saveMetadata(self.metadata)
+        utils.saveMetadata(self.metadata, self.metadir)
         task.deferLater(reactor, 1, self.getMission)
         
     def downlinkMissionComplete(self, mission):
         log.msg("Downlink Mission Accomplished")
         self.fileMap[self.metadata["filename"]] = self.metadata
         self.sendMetadata(self.metadata)
-        utils.saveMetadata(self.metadata)
+        utils.saveMetadata(self.metadata, self.metadir)
         task.deferLater(reactor, 5, self.missionComplete, self.mission)
         
     def missionComplete(self, mission):
