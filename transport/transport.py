@@ -3,7 +3,6 @@
 
 import pickle
 from cloud.common import *
-from twisted.python import log
 
 class MyTransport(object):
     def __init__(self, name = "Transport"):
@@ -19,14 +18,14 @@ class MyTransport(object):
         
     # received data
     def dataReceived(self, fragment):
-        log.msg("%s: Received a fragment" % self.name)
+        print("%s: Received a fragment" % self.name)
         # add the current fragment to fragments
         if self.fragments:
-            log.msg("%s: Received another fragment" % self.name)
+            print("%s: Received another fragment" % self.name)
             self.fragments = self.fragments + fragment
             self.fragmentlength = self.fragmentlength + len(fragment)
         else:
-            log.msg("%s: Received a new fragment" % self.name)
+            print("%s: Received a new fragment" % self.name)
             self.packetlength = int(fragment[:6])
             self.fragmentlength = len(fragment)
             self.fragments = fragment[6:]
@@ -38,7 +37,7 @@ class MyTransport(object):
             return packet
         elif self.fragmentlength >= self.packetlength:
             print(self.fragmentlength, self.packetlength)
-            log.msg("%s: self.fragmentlength >= self.packetlength" % self.name)
+            print("%s: self.fragmentlength >= self.packetlength" % self.name)
             packetstring = self.fragments[:self.packetlength-6]
             self.fragmentlength = self.fragmentlength - self.packetlength
             self.packetlength = self.fragments[self.packetlength-6:self.packetlength]
@@ -46,5 +45,5 @@ class MyTransport(object):
             packet = pickle.loads(packetstring)
             return packet
         else:
-            log.msg("%s: Received a fragment, waiting for more" % self.name)
+            print("%s: Received a fragment, waiting for more" % self.name)
             return None

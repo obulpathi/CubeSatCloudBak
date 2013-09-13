@@ -10,11 +10,7 @@ from cloud.common import *
 def saveMetadata(metadata, directory):
     # reconstruct the whole file path
     filename = directory + metadata["filename"]
-    # check if the file exists
-    if not os.path.isfile(filename):
-        log.msg("Error: no such file: %s exists" % filename)
-        exit(1)
-    log.msg("Saving metadata into the file: %s" % filename)
+    print("Saving metadata for the file: %s" % filename)
     metafile = open(filename, "w")
     metastring = pickle.dumps(metadata)
     metafile.write(metastring)
@@ -23,10 +19,10 @@ def saveMetadata(metadata, directory):
 # load the metadata from the given file
 # change the status of the chunks, after reading metadata        
 def loadMetadata(filename):
-    log.msg("Loading metadata for the file: %s" % filename)
+    print("Loading metadata for the file: %s" % filename)
     # check if the file exists
     if not os.path.isfile(filename):
-        log.msg("Error: no such file: %s exists" % filename)
+        print("Error: no such file: %s exists" % filename)
         exit(1)
     metafile = open(filename)
     metastring = metafile.read()
@@ -40,7 +36,7 @@ def splitImageIntoChunks(filename, directory):
     chunks = {}
     # check if the file exists
     if not os.path.isfile(filename):
-        log.msg("Error: no such file: %s exists" % filename)
+        print("Error: no such file: %s exists" % filename)
         exit(1)
     image = Image.open(filename)
     width = image.size[0]
@@ -87,10 +83,36 @@ def stichChunksIntoImage(directory, filename, metadata):
             chunkname = directory + chunk.name
             # check if the chunk exists
             if not os.path.isfile(chunkname):
-                log.msg("Error: no such chunk: %s exists" % chunkname)
+                print("Error: no such chunk: %s exists" % chunkname)
                 exit(1)
             # fetch the chunk
             data = Image.open(chunkname)
             result.paste(data, (chunk.box.left, chunk.box.top))
     result.save(filename)
     return
+
+def banner(msg):
+    print("#############################################################")
+    print(msg)
+    print("#############################################################")
+
+"""
+# print a banner
+def banner(text, ch='=', length=78):
+    if text is None:
+        print ch * length
+    elif len(text) + 2 + len(ch)*2 > length:
+        # Not enough space
+        print text
+    else:
+        remain = length - (len(text) + 2)
+        prefix_len = remain / 2
+        suffix_len = remain - prefix_len
+        if len(ch) == 1:
+            prefix = ch * prefix_len
+            suffix = ch * suffix_len
+        else:
+            prefix = ch * (prefix_len/len(ch)) + ch[:prefix_len%len(ch)]
+            suffix = ch * (suffix_len/len(ch)) + ch[:suffix_len%len(ch)]
+        print prefix + ' ' + text + ' ' + suffix
+"""

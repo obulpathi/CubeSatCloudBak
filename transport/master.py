@@ -60,18 +60,6 @@ class TransportMasterProtocol(protocol.Protocol):
         self.sendPacket(packetstring)
         self.status = REGISTERED
     
-    # get mission
-    def getMission(self):
-        packet = Packet(self.factory.address, "Receiver",
-                        self.factory.address, "Server", 
-                        GET_MISSION, None, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.transport.write(packetstring)
-    
-    # got mission
-    def gotMission(self, mission):
-        self.factory.gotMission(mission)
-    
     # send data to server
     def sendData(self, flags, data):
         packet = Packet(self.factory.address, "Receiver",
@@ -148,6 +136,7 @@ class TransportMasterFactory(protocol.Factory):
         self.getMission()
             
     def getMission(self):
+        utils.banner("Requesting for NEW_MISSION")
         log.msg("Requesting for new mission")
         packet = Packet("Master", "Receiver",
                         "Master", "Server", 
@@ -172,7 +161,6 @@ class TransportMasterFactory(protocol.Factory):
     def sendMetadata(self, metadata):
         self.sendData("METADATA", metadata)
         log.msg("Sent metadata")
-        return
 
     def getWork(self, worker, oldWork = None):
         log.msg("Work requested by worker")
@@ -208,7 +196,7 @@ class TransportMasterFactory(protocol.Factory):
         return None
 
     def getProcessWork(self, worker):
-        log.msg("Process work requested by worker >>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        log.msg("Process work requested by worker")
         chunkMap = self.metadata["chunkMap"]
         chunks = chunkMap.get(worker, [])
         for chunk in chunks:
@@ -311,8 +299,7 @@ class TransportMasterFactory(protocol.Factory):
     def process(self, mission):
         self.mission = mission
         self.loadMetadata(mission.filename)
-        log.msg("MapReduce mission >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        #self.getMission()
+        log.msg("MapReduce mission")
 
     # downlink the given file
     def downlink(self, mission):
@@ -379,12 +366,15 @@ class TransportMasterFactory(protocol.Factory):
     def storeMissionComplete(self):
         log.msg("Store Mission Accomplished")
         # send the metadata
-        sleep(0.25)
         log.msg("sending metadata")
         self.fileMap[self.metadata["filename"]] = self.metadata
+        utils.banner("METADATA")
         self.sendMetadata(self.metadata)
+        utils.banner("SAVE METADATA")
         utils.saveMetadata(self.metadata, self.metadir)
+        utils.banner("MISSION COMPLETE")
         task.deferLater(reactor, 1, self.getMission)
+        #self.missionComplete(mission)
 
     def processMissionComplete(self, mission):
         log.msg("Process Mission Accomplished")
@@ -414,8 +404,10 @@ class TransportMasterFactory(protocol.Factory):
         task.deferLater(reactor, 5, self.missionComplete, self.mission)
         
     def missionComplete(self, mission):
-        ########### UNIFY the complete mission and new misison into single message ... like getWork method ... OK
+        # UNIFY the complete mission and new misison into single message ... like getWork method ... OK
+        utils.banner("COMPLETED_MISSION1")
         log.msg("Sending mission status")
+        utils.banner("COMPLETED_MISSION")
         self.sendData("COMPLETED_MISSION", mission)
         self.mission = None
         task.deferLater(reactor, 1, self.getMission)
