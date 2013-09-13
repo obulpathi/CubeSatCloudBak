@@ -1,0 +1,48 @@
+# Configuration
+
+commands:
+    - {operation: SENSE, filename: image.jpg, lat: lat, lon: lon}
+    - {operation: STORE, filename: image.jpg}
+    - {operation: PROCESS, filename: image.jpg, output: result.jpg}
+    - {operation: DOWNLINK, filename: result.jpg}
+
+server:
+    address: localhost
+    port: 4000
+    homedir: /home/obulpathi/phd/cloud/data/server/
+
+groundstation:
+    address: localhost
+    port: 4004
+
+master:
+    address: localhost
+    port: 8000
+    homedir: /home/obulpathi/phd/cloud/data/master/
+    
+groundstation0:
+    address: localhost
+    port: 4005
+
+groundstation1:
+    address: localhost
+    port: 4006
+
+groundstation2:
+    address: localhost
+    port: 4007
+    
+worker0:
+    address: localhost
+    port: 8009
+    homedir: /home/obulpathi/phd/cloud/data/
+    
+worker1:
+    address: localhost
+    port: 8010
+    homedir: /home/obulpathi/phd/cloud/data/
+
+worker2:
+    address: localhost
+    port: 8011
+    homedir: /home/obulpathi/phd/cloud/data/
