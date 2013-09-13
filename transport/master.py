@@ -422,15 +422,19 @@ class TransportMasterFactory(protocol.Factory):
         # send the metadata
         log.msg("sending metadata")
         self.fileMap[self.metadata["filename"]] = self.metadata
-        self.sendMetadata(self.metadata)
+        #self.sendMetadata(self.metadata)
         utils.saveMetadata(self.metadata)
         task.deferLater(reactor, 1, self.getMission)
         
     def downlinkMissionComplete(self, mission):
         log.msg("Downlink Mission Accomplished")
-        self.missionComplete(mission)
+        self.fileMap[self.metadata["filename"]] = self.metadata
+        self.sendMetadata(self.metadata)
+        utils.saveMetadata(self.metadata)
+        task.deferLater(reactor, 5, self.missionComplete, self.mission)
         
     def missionComplete(self, mission):
+        ########### UNIFY the complete mission and new misison into single message ... like getWork method ... OK
         log.msg("Sending mission status")
         self.sendData("COMPLETED_MISSION", mission)
         self.mission = None

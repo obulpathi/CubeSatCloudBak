@@ -111,12 +111,12 @@ class TransportServerProtocol(protocol.Protocol):
         log.msg(packet)
         self.sendPacket(packetstring)
 
-    # received a chunk: is it better to save the chunk data to file here
-    # or should we do it ServerFactory?: Which one is better
+    # received a chunk
     def receivedChunk(self, chunk):
-        log.msg("Received chunk >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         log.msg(chunk.filename)
-        filename = self.homedir + "images/" + chunk.filename
+        filename = self.homedir + chunk.filename
+        if not os.path.exists(os.path.split(filename)[0]):
+            os.mkdir(os.path.split(filename)[0])
         handler = open(filename, "w")
         handler.write(chunk.payload)
         handler.close()
@@ -131,8 +131,6 @@ class TransportServerFactory(protocol.Factory):
         self.fileMap = {}
         try:
             os.mkdir(homedir)
-            os.mkdir(homedir + "images/")
-            os.mkdir(homedir + "images/results/")
             os.mkdir(homedir + "metadata/")
         except OSError:
             log.msg("OSError: Unable to create data directories, exiting")
@@ -183,12 +181,14 @@ class TransportServerFactory(protocol.Factory):
         elif mission.operation == "PROCESS":
             pass
         elif mission.operation == "DOWNLINK":
-            self.finishedDownlinkMission("image.jpg")
+            self.finishedDownlinkMission(mission.filename)
         else:
             log.msg("Finished unknown mission: %s", str(mission))
 
     def finishedDownlinkMission(self, filename):
-        log.msg("Finished downlink mission ##################")
-        sleep(5)
-        utils.stichChunksIntoImage(self.homedir + "images/", self.homedir + filename, self.fileMap[filename]) 
+        log.msg("Finished downlink mission ###########################################################")
+        log.msg(self.homedir)
+        log.msg(filename)
+        sleep(10)
+        utils.stichChunksIntoImage(self.homedir, self.homedir + filename, self.fileMap[filename]) 
         log.msg("Downlink Mission Complete")

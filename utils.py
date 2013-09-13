@@ -64,6 +64,9 @@ def splitImageIntoChunks(filename):
 
 # stich chunks into image
 def stichChunksIntoImage(directory, filename, metadata):
+    print("##############################################################################################")
+    print("##############################################################################################")
+    print("##############################################################################################")
     width = metadata["width"]
     height = metadata["height"]
 

@@ -100,7 +100,6 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.homedir = self.homedir + str(self.address) + "/"
         try:
             os.mkdir(self.homedir)
-            os.mkdir(self.homedir + "results/")
         except OSError:
             log.msg("OSError: Unable to create home directory, exiting")
             exit()
@@ -143,12 +142,15 @@ class TransportWorkerProtocol(protocol.Protocol):
     
     def process(self, work):
         log.msg(work)
+        # create the directory, if needed
+        directory = self.homedir + work.payload + "/"
+        if not os.path.exists(directory):
+            os.mkdir(directory)
         filename = self.homedir + work.filename
-        log.msg(filename)
         image = Image.open(filename)
         edges = image.filter(ImageFilter.FIND_EDGES)
-        edges.save(self.homedir + work.payload + "/" + os.path.split(work.filename)[1])
-        task.deferLater(reactor, 1.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
+        edges.save(directory + os.path.split(work.filename)[1])
+        task.deferLater(reactor, 1.0, self.getWork, work)
         
     def downlink(self, work):
         filename = self.homedir + work.filename
