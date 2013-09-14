@@ -3,13 +3,16 @@
 
 import pickle
 from cloud.common import *
+from threading import Lock
 
 class MyTransport(object):
-    def __init__(self, name = "Transport"):
+    def __init__(self, transport, name = "Transport"):
         self.name = name
+        self.transport = transport
         self.fragments = ""
         self.fragmentlength = 0
         self.packetlength = 0
+        self.mutex = Lock()
     
     def reset(self):
         self.fragments = ""
@@ -18,7 +21,8 @@ class MyTransport(object):
         
     # received data
     def dataReceived(self, fragment):
-        print("%s: Received a fragment" % self.name)
+        self.mutex.acquire()
+        # print("%s: Received a fragment" % self.name)
         # add the current fragment to fragments
         if self.fragments:
             print("%s: Received another fragment" % self.name)
@@ -26,24 +30,28 @@ class MyTransport(object):
             self.fragmentlength = self.fragmentlength + len(fragment)
         else:
             print("%s: Received a new fragment" % self.name)
-            self.packetlength = int(fragment[:6])
+            self.packetlength = int(fragment[:LHSIZE])
             self.fragmentlength = len(fragment)
-            self.fragments = fragment[6:]
+            self.fragments = fragment[LHSIZE:]
 
-        # check if we received the whole packet
-        if self.fragmentlength == self.packetlength:
-            packet = pickle.loads(self.fragments)
-            self.fragments = ""
-            return packet
-        elif self.fragmentlength >= self.packetlength:
-            print(self.fragmentlength, self.packetlength)
-            print("%s: self.fragmentlength >= self.packetlength" % self.name)
-            packetstring = self.fragments[:self.packetlength-6]
-            self.fragmentlength = self.fragmentlength - self.packetlength
-            self.packetlength = self.fragments[self.packetlength-6:self.packetlength]
-            self.fragments = self.fragments[int(self.packetlength):]
+        # if we have more then one packet
+        while self.fragmentlength > self.packetlength:
+            print("%s: fragmentlength: %d,\tpacketlength: %d" % (self.name, self.fragmentlength, self.packetlength))
+            packetstring = self.fragments[:self.packetlength-LHSIZE]
             packet = pickle.loads(packetstring)
-            return packet
-        else:
+            self.transport.packetReceived(packet)
+            self.fragmentlength = self.fragmentlength - self.packetlength
+            self.packetlength = int(self.fragments[self.packetlength-LHSIZE:self.packetlength])
+            self.fragments = self.fragments[self.packetlength:]
+            print("%s: fragmentlength: %d,\tpacketlength: %d" % (self.name, self.fragmentlength, self.packetlength))               
+        # if we received just one packet
+        if self.fragmentlength == self.packetlength:
+            packetstring = self.fragments[:self.packetlength-LHSIZE]
+            packet = pickle.loads(packetstring)
+            # packet = pickle.loads(self.fragments)
+            self.transport.packetReceived(packet)
+            self.reset()
+        else: # if we received less than a packet
             print("%s: Received a fragment, waiting for more" % self.name)
-            return None
+            
+        self.mutex.release()

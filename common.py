@@ -113,6 +113,7 @@ DOWNLINK    = "DOWNLINK"
 
 # packet constants
 HEADERS_SIZE = 22
+LHSIZE  = 6
 
 # Packet definition
 class Packet(object):

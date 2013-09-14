@@ -9,7 +9,7 @@ from cloud.common import *
 # save the metadata into file
 def saveMetadata(metadata, directory):
     # reconstruct the whole file path
-    filename = directory + metadata["filename"]
+    filename = directory + metadata["filename"].split(".")[0]
     print("Saving metadata for the file: %s" % filename)
     metafile = open(filename, "w")
     metastring = pickle.dumps(metadata)
@@ -95,7 +95,8 @@ def banner(msg):
     print("#############################################################")
     print(msg)
     print("#############################################################")
-
+    return
+    
 """
 # print a banner
 def banner(text, ch='=', length=78):

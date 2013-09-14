@@ -1,4 +1,5 @@
 import pickle
+from threading import Lock
 
 from twisted.python import log
 from twisted.internet import task
@@ -13,6 +14,7 @@ class TransportCSClientProtocol(protocol.Protocol):
         self.id = None
         self.waiter = WaitForData(self.factory.fromWorkerToCSClient, self.getData)
         self.waiter.start()
+        self.mutexsp = Lock()
 
     def getData(self, data):
         self.transport.write(data)
@@ -24,6 +26,15 @@ class TransportCSClientProtocol(protocol.Protocol):
     def dataReceived(self, packetstring):
         self.factory.fromCSClientToWorker.put(packetstring)
     
+    # send a packet, if needed using multiple fragments
+    def sendPacket(self, packetstring):
+        self.mutexsp.acquire()
+        length = len(packetstring) + 6
+        packetstring = str(length).zfill(6) + packetstring
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+        self.mutexsp.release()
+        
     def register1(self):
         packet = Packet("sender", "receiver", "worker", "Server", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)

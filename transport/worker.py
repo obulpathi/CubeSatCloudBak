@@ -24,8 +24,9 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getData)
         self.cswaiter.start()
         self.ccwaiter.start()
-        self.mutex = Lock()
-        self.mytransport = MyTransport()
+        self.mutexpr = Lock()
+        self.mutexsp = Lock()
+        self.mytransport = MyTransport(self, "Worker")
 
     def getData(self, data):
         self.sendPacket(data)
@@ -36,14 +37,12 @@ class TransportWorkerProtocol(protocol.Protocol):
 
     # received data
     def dataReceived(self, fragment):
-        self.mutex.acquire()
-        packet = self.mytransport.dataReceived(fragment)
-        if packet:
-            self.packetReceived(packet)
-        self.mutex.release()
+        self.mytransport.dataReceived(fragment)
 
-    # recevei packet    
+    # receive packet    
     def packetReceived(self, packet):
+        # acquire the mutex
+        self.mutexpr.acquire()
         log.msg(packet)
         if self.address == "Worker" and packet.flags == REGISTERED:
             self.registered(packet)
@@ -60,15 +59,18 @@ class TransportWorkerProtocol(protocol.Protocol):
         else:
             log.msg("Server said: %s" % packetstring)
         # release the mutex
-
+        self.mutexpr.release()
+        
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
+        self.mutexsp.acquire()
         length = len(packetstring) + 6
         packetstring = str(length).zfill(6) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             log.msg("Sending a fragment")
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
-    
+        self.mutexsp.release()
+        
     def register(self):
         packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)

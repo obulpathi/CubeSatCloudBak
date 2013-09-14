@@ -17,7 +17,7 @@ class TransportGSClientProtocol(protocol.Protocol):
         self.waiter = WaitForData(self.factory.fromGSServerToGSClient, self.getData)
         self.waiter.start()
         self.state = UNREGISTERED # whats the begin state?
-        self.mytransport = MyTransport()
+        self.mytransport = MyTransport(self, "GSClient")
         
     def getData(self, packetstring):
         self.transport.write(packetstring)
@@ -28,9 +28,7 @@ class TransportGSClientProtocol(protocol.Protocol):
 
     # received data
     def dataReceived(self, fragment):
-        packet = self.mytransport.dataReceived(fragment)
-        if packet:
-            self.packetReceived(packet)
+        self.mytransport.dataReceived(fragment)
                 
     # received a packet
     def packetReceived(self, packet):

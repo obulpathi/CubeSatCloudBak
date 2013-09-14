@@ -3,6 +3,7 @@ import math
 import pickle
 from time import sleep
 from uuid import uuid4
+from threading import Lock
 
 from twisted.python import log
 from twisted.internet import reactor
@@ -17,19 +18,17 @@ class TransportServerProtocol(protocol.Protocol):
         self.factory = factory
         self.homedir = homedir
         self.name = "Server"
-        self.mytransport = MyTransport(self.name)
-        self.fragments = ""
-        self.fragmentlength = 0
-        self.packetlength = 0
+        self.mutexpr = Lock()
+        self.mutexsp = Lock()
+        self.mytransport = MyTransport(self, self.name)
 
     # received data
     def dataReceived(self, fragment):
-        packet = self.mytransport.dataReceived(fragment)
-        if packet:
-            self.packetReceived(packet)
+        self.mytransport.dataReceived(fragment)
 
     # received a packet
     def packetReceived(self, packet):
+        self.mutexpr.acquire()
         log.msg(packet)
         if packet.flags == REGISTER:
             if packet.source == "GroundStation":
@@ -46,15 +45,20 @@ class TransportServerProtocol(protocol.Protocol):
             self.factory.receivedMetadata(packet.payload)
         elif packet.flags == "COMPLETED_MISSION":
             self.factory.finishedMission(packet.payload)
+        elif packet.flags == "MISSION":
+            self.finishedMission(packet.payload)
         else:
             log.msg("Received unkown packet: %s", str(packet))
-    
+        self.mutexpr.release()
+        
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
+        self.mutexsp.acquire()
         length = len(packetstring) + 6
         packetstring = str(length).zfill(6) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+        self.mutexsp.release()
             
     # register groundstation
     def registerGroundStation(self, packet):
@@ -80,15 +84,6 @@ class TransportServerProtocol(protocol.Protocol):
         log.msg(new_packet)
         self.sendPacket(packetstring)
 
-    # get mission to ground station
-    def getMission(self, receiver):
-        mission = self.factory.getMission()
-        packet = Packet(self.factory.address, receiver, self.factory.address, "Master", \
-                        MISSION, mission, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        log.msg(packet)
-        self.sendPacket(packetstring)
-
     # received a chunk
     def receivedChunk(self, chunk):
         log.msg(chunk.filename)
@@ -99,6 +94,24 @@ class TransportServerProtocol(protocol.Protocol):
         handler.write(chunk.payload)
         handler.close()
 
+    def finishedMission(self, mission):
+        mission = self.factory.finishedMission(mission)
+        packet = Packet(self.factory.address, "Receiver",
+                        self.factory.address, "Master",
+                        MISSION, mission, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        log.msg(packet)
+        self.sendPacket(packetstring)
+                
+    # get mission to ground station: REMOVE THIS >>>>>>>>>>>>>>>>>>>>>>>>>>>..
+    def getMission(self, receiver):
+        mission = self.factory.getMission()
+        packet = Packet(self.factory.address, receiver, self.factory.address, "Master", \
+                        MISSION, mission, HEADERS_SIZE)
+        packetstring = pickle.dumps(packet)
+        log.msg(packet)
+        self.sendPacket(packetstring)
+        
 # Server factory
 class TransportServerFactory(protocol.Factory):
     def __init__(self, commands, homedir):
@@ -107,6 +120,7 @@ class TransportServerFactory(protocol.Factory):
         self.registrationCount = 100
         self.homedir = homedir
         self.fileMap = {}
+        self.mutex = Lock()
         try:
             os.mkdir(homedir)
             os.mkdir(homedir + "metadata/")
@@ -150,6 +164,7 @@ class TransportServerFactory(protocol.Factory):
         self.fileMap[metadata["filename"]] = metadata
 
     def finishedMission(self, mission):
+        self.mutex.acquire()
         if not mission:
             log.msg("Finished unknown mission")
         elif mission.operation == "SENSE":
@@ -162,11 +177,9 @@ class TransportServerFactory(protocol.Factory):
             self.finishedDownlinkMission(mission.filename)
         else:
             log.msg("Finished unknown mission: %s", str(mission))
+        self.mutex.release()
+        return self.getMission()
 
     def finishedDownlinkMission(self, filename):
-        log.msg("Finished downlink mission ###########################################################")
-        log.msg(self.homedir)
-        log.msg(filename)
-        sleep(10)
         utils.stichChunksIntoImage(self.homedir, self.homedir + filename, self.fileMap[filename]) 
         log.msg("Downlink Mission Complete")

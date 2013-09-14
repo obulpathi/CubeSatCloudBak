@@ -2,6 +2,7 @@ import os
 import math
 import pickle
 from time import sleep
+from threading import Lock
 
 from twisted.python import log
 from twisted.internet import task
@@ -15,17 +16,18 @@ from cloud.transport.transport import MyTransport
 class TransportMasterProtocol(protocol.Protocol):
     def __init__(self, factory):
         self.factory = factory
-        self.status = IDLE 
-        self.mytransport = MyTransport()
+        self.status = IDLE
+        self.mutexpr = Lock()
+        self.mutexsp = Lock()
+        self.mytransport = MyTransport(self, "Master")
         
     # received data
     def dataReceived(self, fragment):
-        packet = self.mytransport.dataReceived(fragment)
-        if packet:
-            self.packetReceived(packet)
+        self.mytransport.dataReceived(fragment)
                             
     # received a packet
     def packetReceived(self, packet):
+        self.mutexpr.acquire()
         log.msg(packet)
         if packet.flags == REGISTER:
             self.registerWorker(packet)
@@ -40,14 +42,17 @@ class TransportMasterProtocol(protocol.Protocol):
         else:
             log.msg(packet)
             log.msg("Unknown stuff")
+        self.mutexpr.release()
 
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
+        self.mutexsp.acquire()
         length = len(packetstring) + 6
         packetstring = str(length).zfill(6) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             log.msg("Sending a fragment")
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+        self.mutexsp.release()
                 
     # register worker
     def registerWorker(self, packet):
@@ -59,14 +64,6 @@ class TransportMasterProtocol(protocol.Protocol):
         packetstring = pickle.dumps(packet)
         self.sendPacket(packetstring)
         self.status = REGISTERED
-    
-    # send data to server
-    def sendData(self, flags, data):
-        packet = Packet(self.factory.address, "Receiver",
-                        self.factory.address, "Server", 
-                        flags, data, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.transport.write(packetstring)
         
     # get work to workers
     def getWork(self, worker, finishedWork = None):
@@ -102,7 +99,7 @@ class TransportMasterFactory(protocol.Factory):
         self.transports = []
         self.registrationCount = 0
         self.homedir = homedir
-        self.metadir = homedir + "/metadata"
+        self.metadir = homedir + "metadata/"
         self.fileMap = {}
         self.metadata = {}
         try:
@@ -112,7 +109,6 @@ class TransportMasterFactory(protocol.Factory):
             pass
         self.fromMasterToMasterClient = fromMasterToMasterClient
         self.fromMasterClientToMaster = fromMasterClientToMaster
-        #task.deferLater(reactor, 1, self.getMission)
         self.waiter = WaitForData(self.fromMasterClientToMaster, self.getData)
         self.waiter.start()
 
@@ -125,7 +121,17 @@ class TransportMasterFactory(protocol.Factory):
         else:
             log.msg("Received unknown packet from Master Client: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
             log.msg(packet)
-                
+
+    def sendData(self, flags, payload):
+        packet = Packet("Master", "Receiver",
+                        "Master", "Server", 
+                        flags, payload, HEADERS_SIZE)
+        self.fromMasterToMasterClient.put(packet)
+    
+    def sendMetadata(self, metadata):
+        self.sendData("METADATA", metadata)
+        log.msg("Sent metadata")
+                            
     def buildProtocol(self, addr):
         transport = TransportMasterProtocol(self)
         self.transports.append(transport)
@@ -151,16 +157,60 @@ class TransportMasterFactory(protocol.Factory):
         else:
             log.msg("No mission")
             task.deferLater(reactor, 5, self.getMission)
-
-    def sendData(self, flags, payload):
-        packet = Packet("Master", "Receiver",
-                        "Master", "Server", 
-                        flags, payload, HEADERS_SIZE)
-        self.fromMasterToMasterClient.put(packet)
     
-    def sendMetadata(self, metadata):
-        self.sendData("METADATA", metadata)
-        log.msg("Sent metadata")
+    def execute(self, mission):
+        log.msg("Received mission: %s" % mission)
+        if mission.operation == SENSE:
+            self.sense(mission)
+        elif mission.operation == STORE:
+            self.store(mission)
+        elif mission.operation == PROCESS:
+            self.process(mission)
+        elif mission.operation == DOWNLINK:
+            self.downlink(mission)
+        else:
+            log.msg("ERROR: Unknown mission: %s" % mission)
+
+    # simulate sensing
+    def sense(self, mission):
+        log.msg("Executing sensing mission: ")
+        source = open("data.jpg", "r")
+        data = source.read()
+        source.close()
+        log.msg("Read from source")
+        sink = open(mission.filename, "w")
+        sink.write(data)
+        sink.close()
+        log.msg("Wrote to sink")
+        self.senseMissionComplete(mission)
+    
+    # store the given image on cdfs
+    def store(self, mission):
+        log.msg("Executing storing mission: ")
+        # split the image into chunks
+        self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename, self.homedir)
+        # mission is ready to be executed
+        self.mission = mission
+
+    # process the given file and downlink
+    def process(self, mission):
+        self.mission = mission
+        self.loadMetadata(mission.filename)
+        log.msg("MapReduce mission")
+
+    # downlink the given file
+    def downlink(self, mission):
+        log.msg(mission)
+        self.loadMetadata(mission.filename)
+        self.mission = mission
+
+    # load the metadata for the file
+    def loadMetadata(self, filename):
+        self.metadata = self.fileMap[filename]
+        chunkMap = self.metadata["chunkMap"]
+        for chunks in chunkMap.itervalues():
+            for chunk in chunks:
+                chunk.status = "UNASSIGNED"
 
     def getWork(self, worker, oldWork = None):
         log.msg("Work requested by worker")
@@ -220,7 +270,7 @@ class TransportMasterFactory(protocol.Factory):
                 log.msg(work)
                 return work
         # no work: check if mission is complete
-        if self.isMissionComplete():
+        if self.isDownlinkMissionComplete():
             self.downlinkMissionComplete(self.mission)
         
     def finishedWork(self, work, worker):
@@ -260,60 +310,6 @@ class TransportMasterFactory(protocol.Factory):
                 chunk.status = "FINISHED"
                 return
         log.msg("ERROR: Got unknown work item")
-                        
-    def execute(self, mission):
-        log.msg("Received mission: %s" % mission)
-        if mission.operation == SENSE:
-            self.sense(mission)
-        elif mission.operation == STORE:
-            self.store(mission)
-        elif mission.operation == PROCESS:
-            self.process(mission)
-        elif mission.operation == DOWNLINK:
-            self.downlink(mission)
-        else:
-            log.msg("ERROR: Unknown mission: %s" % mission)
-
-    # simulate sensing
-    def sense(self, mission):
-        log.msg("Executing sensing mission: ")
-        source = open("data.jpg", "r")
-        data = source.read()
-        source.close()
-        log.msg("Read from source")
-        sink = open(mission.filename, "w")
-        sink.write(data)
-        sink.close()
-        log.msg("Wrote to sink")
-        self.senseMissionComplete(mission)
-    
-    # store the given image on cdfs
-    def store(self, mission):
-        log.msg("Executing storing mission: ")
-        # split the image into chunks
-        self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename, self.homedir)
-        # mission is ready to be executed
-        self.mission = mission
-
-    # process the given file and downlink
-    def process(self, mission):
-        self.mission = mission
-        self.loadMetadata(mission.filename)
-        log.msg("MapReduce mission")
-
-    # downlink the given file
-    def downlink(self, mission):
-        log.msg(mission)
-        self.loadMetadata(mission.filename)
-        self.mission = mission
-
-    # load the metadata for the file
-    def loadMetadata(self, filename):
-        self.metadata = self.fileMap[filename]
-        chunkMap = self.metadata["chunkMap"]
-        for chunks in chunkMap.itervalues():
-            for chunk in chunks:
-                chunk.status = "UNASSIGNED"
         
     # check if the current mission is complete
     # and if it is, get a new misison
@@ -360,21 +356,16 @@ class TransportMasterFactory(protocol.Factory):
 
     def senseMissionComplete(self, mission):
         log.msg("Sense Mission Accomplished")
-        # send a notification that current mission is complete and fetch next
         self.missionComplete(mission)
             
     def storeMissionComplete(self):
         log.msg("Store Mission Accomplished")
         # send the metadata
-        log.msg("sending metadata")
         self.fileMap[self.metadata["filename"]] = self.metadata
-        utils.banner("METADATA")
         self.sendMetadata(self.metadata)
-        utils.banner("SAVE METADATA")
         utils.saveMetadata(self.metadata, self.metadir)
-        utils.banner("MISSION COMPLETE")
-        task.deferLater(reactor, 1, self.getMission)
-        #self.missionComplete(mission)
+        task.deferLater(reactor, 0.1, self.missionComplete, self.mission)
+        # self.missionComplete(self.mission)
 
     def processMissionComplete(self, mission):
         log.msg("Process Mission Accomplished")
@@ -401,13 +392,10 @@ class TransportMasterFactory(protocol.Factory):
         self.fileMap[self.metadata["filename"]] = self.metadata
         self.sendMetadata(self.metadata)
         utils.saveMetadata(self.metadata, self.metadir)
-        task.deferLater(reactor, 5, self.missionComplete, self.mission)
-        
+        task.deferLater(reactor, 1, self.missionComplete, mission)
+
+    # send a notification that current mission is complete and fetch next    
     def missionComplete(self, mission):
-        # UNIFY the complete mission and new misison into single message ... like getWork method ... OK
-        utils.banner("COMPLETED_MISSION1")
-        log.msg("Sending mission status")
-        utils.banner("COMPLETED_MISSION")
-        self.sendData("COMPLETED_MISSION", mission)
+        print("MISSION COMPLETE")
+        self.sendData("MISSION", mission)
         self.mission = None
-        task.deferLater(reactor, 1, self.getMission)

@@ -1,5 +1,6 @@
 import math
 import pickle
+from threading import Lock
 
 from twisted.python import log
 from twisted.internet import task
@@ -15,7 +16,9 @@ class TransportMasterClientProtocol(protocol.Protocol):
         self.address = None
         self.waiter = WaitForData(self.factory.fromMasterToMasterClient, self.getData)
         self.waiter.start()
-        self.mytransport = MyTransport()
+        self.mutexpr = Lock()
+        self.mutexsp = Lock()
+        self.mytransport = MyTransport(self, "MClient")
 
     def getData(self, packet):
         log.msg("MasterClient: Got a packet from Master, sending it to gsserver")
@@ -27,25 +30,23 @@ class TransportMasterClientProtocol(protocol.Protocol):
 
     # received data
     def dataReceived(self, fragment):
-        packet = self.mytransport.dataReceived(fragment)
-        if packet:
-            self.packetReceived(packet)
+        self.mytransport.dataReceived(fragment)
 
     # received a packet
     def packetReceived(self, packet):
+        self.mutexpr.acquire()
         log.msg(packet)
         self.factory.fromMasterClientToMaster.put(packet)
+        self.mutexpr.release()
 
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
+        self.mutexsp.acquire()
         length = len(packetstring) + 6
         packetstring = str(length).zfill(6) + packetstring
-        print(length, packetstring[:6])
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
-            log.msg("fgragment: %d\t len: %d" % (i, len(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])))
-            log.msg("Sending a fragment")
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
-            #self.transport.doWrite()
+        self.mutexsp.release()
                 
     def register(self):
         packet = Packet("MasterClient", "Master", "MasterClient", "Master", REGISTER, None, HEADERS_SIZE)
