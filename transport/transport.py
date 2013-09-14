@@ -2,6 +2,7 @@
 # undo any hardcoded stuff ... OK :)
 
 import pickle
+from time import sleep
 from cloud.common import *
 from threading import Lock
 
@@ -47,10 +48,12 @@ class MyTransport(object):
         # if we received just one packet
         if self.fragmentlength == self.packetlength:
             packetstring = self.fragments[:self.packetlength-LHSIZE]
+            sleep(0.2)
             packet = pickle.loads(packetstring)
             # packet = pickle.loads(self.fragments)
             self.transport.packetReceived(packet)
-            self.reset()
+            # self.reset()
+            self.fragments = ""
         else: # if we received less than a packet
             print("%s: Received a fragment, waiting for more" % self.name)
             

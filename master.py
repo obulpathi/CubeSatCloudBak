@@ -8,7 +8,7 @@ from twisted.internet import protocol
 
 from cloud.common import *
 from cloud.transport.master import *
-from cloud.transport.csclient import *
+from cloud.transport.mclient import *
 
 # run master
 if __name__ == "__main__":
@@ -17,10 +17,15 @@ if __name__ == "__main__":
     configDict = yaml.load(f)
     f.close()
     config = Struct(configDict)
+    fromMasterToMasterClient = Queue()
+    fromMasterClientToMaster = Queue()
     # set up logging
     #log.startLogging(open('/var/log/master.log', 'w'))
     log.startLogging(sys.stdout)
     reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
                             TransportMasterClientFactory(fromMasterToMasterClient, fromMasterClientToMaster))
-    reactor.listenTCP(config.master.port, TransportMasterFactory())
+    reactor.listenTCP(config.master.port,
+                            TransportMasterFactory(config.master.homedir,
+                                                    fromMasterToMasterClient,
+                                                    fromMasterClientToMaster))
     reactor.run()

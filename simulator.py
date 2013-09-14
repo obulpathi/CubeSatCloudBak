@@ -3,7 +3,7 @@
 import sys
 import threading
 from time import sleep
-from multiprocessing import Queue
+from Queue import Queue
 
 from twisted.python import log
 from twisted.internet import reactor

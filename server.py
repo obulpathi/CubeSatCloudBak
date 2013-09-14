@@ -18,5 +18,5 @@ if __name__ == "__main__":
     # setup logging
     # log.startLogging(open('/var/log/server.log', 'w'))
     log.startLogging(sys.stdout)
-    reactor.listenTCP(config.server.port, TransportServerFactory(config.commands))
+    reactor.listenTCP(config.server.port, TransportServerFactory(config.commands, config.server.homedir))
     reactor.run()

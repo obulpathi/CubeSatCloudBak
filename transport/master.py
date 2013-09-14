@@ -37,11 +37,9 @@ class TransportMasterProtocol(protocol.Protocol):
             self.getWork(packet.source, packet.payload)
         elif packet.flags == GET_CHUNK:
             self.transmitChunk(packet.source)
-        elif packet.flags == MISSION:
-            self.gotMission(packet.payload)
         else:
             log.msg(packet)
-            log.msg("Unknown stuff")
+            utils.banner("Unknown stuff")
         self.mutexpr.release()
 
     # send a packet, if needed using multiple fragments

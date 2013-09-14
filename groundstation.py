@@ -23,9 +23,10 @@ if __name__ == "__main__":
     fromGSClientToGSServer = Queue()
     fromGSServerToGSClient = Queue()
     # start GSClient and GSServer
-    reactor.connectTCP(config.server.address, config.server.port, 
-                        TransportGSClientFactory(fromGSClientToGSServer, fromGSServerToGSClient))
-    reactor.listenTCP(config.groundstation.port, 
-                        TransportGSServerFactory(fromGSClientToGSServer, fromGSServerToGSClient))
-    log.msg("GSClient and GSServer are up and running")
-    reactor.run()
+    while True:
+        reactor.connectTCP(config.server.address, config.server.port, 
+                            TransportGSClientFactory(fromGSClientToGSServer, fromGSServerToGSClient))
+        reactor.listenTCP(config.groundstation.port, 
+                            TransportGSServerFactory(fromGSClientToGSServer, fromGSServerToGSClient))
+        log.msg("GSClient and GSServer are up and running")
+        reactor.run()
