@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import sys
+import Queue
 import threading
 from time import sleep
-from Queue import Queue
 
 from twisted.python import log
 from twisted.internet import reactor
@@ -21,8 +21,8 @@ from cloud.transport.csclient import *
 class MasterThread(threading.Thread):
     def __init__(self, config):
         self.config = config
-        self.fromMasterToMasterClient = Queue()
-        self.fromMasterClientToMaster = Queue()
+        self.fromMasterToMasterClient = Queue.Queue()
+        self.fromMasterClientToMaster = Queue.Queue()
         threading.Thread.__init__(self)
 
     def run(self):
@@ -37,10 +37,10 @@ class WorkerThread(threading.Thread):
         self.mconfig  = mconfig
         self.gsconfig = gsconfig
         self.worker = worker
-        self.fromWorkerToCSClient = Queue()
-        self.fromCSClientToWorker = Queue()
-        self.fromWorkerToCSServer = Queue()
-        self.fromCSServerToWorker = Queue()
+        self.fromWorkerToCSClient = Queue.Queue()
+        self.fromCSClientToWorker = Queue.Queue()
+        self.fromWorkerToCSServer = Queue.Queue()
+        self.fromCSServerToWorker = Queue.Queue()
         threading.Thread.__init__(self)
 
     def run(self):
@@ -57,8 +57,8 @@ class GroundStationThread(threading.Thread):
     def __init__(self, sconfig, config):
         self.config = config
         self.sconfig = sconfig
-        self.fromGSClientToGSServer = Queue()
-        self.fromGSServerToGSClient = Queue()
+        self.fromGSClientToGSServer = Queue.Queue()
+        self.fromGSServerToGSClient = Queue.Queue()
         threading.Thread.__init__(self)
 
     def run(self):
@@ -89,6 +89,12 @@ if __name__ == "__main__":
     # setup logging
     log.startLogging(sys.stdout)
     
+    # set network size
+    if len(sys.argv) > 1:
+        NSIZE = int(sys.argv[1])
+    else:
+        NSIZE = 1
+        
     # create and start server
     server = ServerThread(config.server, config.commands)
     server.start()
@@ -97,26 +103,21 @@ if __name__ == "__main__":
     master = MasterThread(config.master)
     master.start()
     sleep(1)
-    # create and start ground station
-    groundstation = GroundStationThread(config.server, config.groundstation)
-    groundstation.start()
-    sleep(1)
     # create and start ground stations
-    gs0 = GroundStationThread(config.server, config.groundstation0)
-    #gs1 = GroundStationThread(config.server, config.groundstation1)
-    #gs2 = GroundStationThread(config.server, config.groundstation2)
-    gs0.start()
-    #gs1.start()
-    #gs2.start()
+    groundstations = []
+    for i in range(NSIZE+1):
+        gsconfig = config.groundstation
+        gsconfig.port = gsconfig.port + 1
+        groundstation = GroundStationThread(config.server, gsconfig)
+        groundstation.start()
+        groundstations.append(groundstation)
     sleep(1)
-    # create worker threads: mconfig, gsconfig, worker
-    worker0 = WorkerThread(config.master, config.groundstation0, config.worker0)
-    #worker1 = WorkerThread(config.master, config.groundstation1, config.worker1)
-    #worker2 = WorkerThread(config.master, config.groundstation2, config.worker2)
-    # create ground station threads
-    worker0.start()
-    #worker1.start()
-    #worker2.start()
+    workers = []
+    # create and start workers
+    for i in range(NSIZE):
+        worker = WorkerThread(config.master, config.groundstation, config.worker)
+        worker.start()
+        workers.append(worker)
     sleep(1)
     # start the reactor
     reactor.run()

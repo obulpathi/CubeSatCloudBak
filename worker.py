@@ -1,38 +1,47 @@
-from twisted.python import log
-from twisted.internet import reactor
-from twisted.internet import protocol
-
 import sys
 import yaml
-from multiprocessing import Queue
+import Queue
 
-from cloud.common import *
-from cloud.transport.worker import *
-from cloud.transport.csclient import *
-from cloud.transport.csserver import *
+from twisted.python import log
+from twisted.internet import reactor
+
+from cloud.common import Struct
+from cloud.transport.worker import TransportWorkerFactory
+from cloud.transport.csclient import TransportCSClientFactory
+from cloud.transport.csserver import TransportCSServerFactory
 
 # run the worker and twisted reactor
 if __name__ == "__main__":
-    # read configuration
+    # read the configuration
     f = open('config.yaml')
     configDict = yaml.load(f)
     f.close()
     config = Struct(configDict)
-    # set up logging
-    #log.startLogging(open('/var/log/master.log', 'w'))
+    
+    # setup logging
     log.startLogging(sys.stdout)
+    
     #set up IPC channels
-    fromWorkerToCSClient = Queue()
-    fromCSClientToWorker = Queue()
-    fromWorkerToCSServer = Queue()
-    fromCSServerToWorker = Queue()
+    fromWorkerToCSClient = Queue.Queue()
+    fromCSClientToWorker = Queue.Queue()
+    fromWorkerToCSServer = Queue.Queue()
+    fromCSServerToWorker = Queue.Queue()
+    
+    # configure
+    worker = config.worker
+    groundstation = config.groundstation
+    if len(sys.argv) > 1:
+        worker.port = worker.port + int(sys.argv[1])
+        groundstation.port = groundstation.port + int(sys.argv[1])
+        worker.homedir = worker.homedir + sys.argv[1]
     
     # start Worker, CSClient and CSServer
     reactor.connectTCP(config.master.address, config.master.port,
-                        TransportWorkerFactory(fromWorkerToCSClient, fromCSClientToWorker,
-                                               fromWorkerToCSServer, fromCSServerToWorker))
-    reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
+                        TransportWorkerFactory(sys.argv[1], worker.homedir,
+                                                fromWorkerToCSClient, fromCSClientToWorker,
+                                                fromWorkerToCSServer, fromCSServerToWorker))
+    reactor.connectTCP(groundstation.address, groundstation.port, 
                         TransportCSClientFactory(fromWorkerToCSClient, fromCSClientToWorker))
-    reactor.listenTCP(config.worker.port,
+    reactor.listenTCP(worker.port,
                         TransportCSServerFactory(fromWorkerToCSServer, fromCSServerToWorker))
     reactor.run()

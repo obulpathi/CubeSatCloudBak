@@ -1,27 +1,28 @@
 import sys
 import yaml
-from multiprocessing import Queue
+import Queue
 
 from twisted.python import log
 from twisted.internet import reactor
-from twisted.internet import protocol
 
-from cloud.common import *
-from cloud.transport.master import *
-from cloud.transport.mclient import *
+from cloud.common import Struct
+from cloud.transport.master import TransportMasterFactory
+from cloud.transport.mclient import TransportMasterClientFactory
 
 # run master
 if __name__ == "__main__":
-    # read configuration
+    # read the configuration
     f = open('config.yaml')
     configDict = yaml.load(f)
     f.close()
     config = Struct(configDict)
-    fromMasterToMasterClient = Queue()
-    fromMasterClientToMaster = Queue()
-    # set up logging
-    #log.startLogging(open('/var/log/master.log', 'w'))
+    
+    # setup logging
     log.startLogging(sys.stdout)
+    
+    # setup communication channels
+    fromMasterToMasterClient = Queue.Queue()
+    fromMasterClientToMaster = Queue.Queue()
     reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
                             TransportMasterClientFactory(fromMasterToMasterClient, fromMasterClientToMaster))
     reactor.listenTCP(config.master.port,

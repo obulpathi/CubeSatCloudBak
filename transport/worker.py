@@ -156,7 +156,8 @@ class TransportWorkerProtocol(protocol.Protocol):
 
             
 class TransportWorkerFactory(protocol.ClientFactory):
-    def __init__(self, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
+    def __init__(self, addresss, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
+        self.address = address
         self.homedir = homedir
         self.fromWorkerToCSClient = fromWorkerToCSClient
         self.fromCSClientToWorker = fromCSClientToWorker
