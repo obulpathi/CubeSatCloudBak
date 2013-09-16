@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import copy
 import Queue
 import threading
 from time import sleep
@@ -45,7 +46,7 @@ class WorkerThread(threading.Thread):
 
     def run(self):
         reactor.connectTCP(self.mconfig.address, self.mconfig.port,
-                            TransportWorkerFactory(self.worker.homedir,
+                            TransportWorkerFactory(self.worker.address, self.worker.homedir,
                                                     self.fromWorkerToCSClient, self.fromCSClientToWorker,
                                                     self.fromWorkerToCSServer, self.fromCSServerToWorker))
         reactor.connectTCP(self.gsconfig.address, self.gsconfig.port, 
@@ -64,6 +65,7 @@ class GroundStationThread(threading.Thread):
     def run(self):
         reactor.connectTCP(self.sconfig.address, self.sconfig.port, 
                             TransportGSClientFactory(self.fromGSClientToGSServer, self.fromGSServerToGSClient))
+        print(self.config.port)
         reactor.listenTCP(self.config.port, TransportGSServerFactory(self.fromGSClientToGSServer, self.fromGSServerToGSClient))
 
 class ServerThread(threading.Thread):
@@ -99,23 +101,29 @@ if __name__ == "__main__":
     server = ServerThread(config.server, config.commands)
     server.start()
     sleep(1)
-    # create and start master
-    master = MasterThread(config.master)
-    master.start()
-    sleep(1)
     # create and start ground stations
     groundstations = []
     for i in range(NSIZE+1):
-        gsconfig = config.groundstation
-        gsconfig.port = gsconfig.port + 1
+        gsconfig = copy.deepcopy(config.groundstation)
+        gsconfig.port = gsconfig.port + i
+        print(gsconfig)
         groundstation = GroundStationThread(config.server, gsconfig)
         groundstation.start()
         groundstations.append(groundstation)
     sleep(1)
+    # create and start master
+    master = MasterThread(config.master)
+    master.start()
+    sleep(1)
     workers = []
     # create and start workers
     for i in range(NSIZE):
-        worker = WorkerThread(config.master, config.groundstation, config.worker)
+        wconfig = copy.deepcopy(config.worker)
+        wconfig.address = i
+        wconfig.port = wconfig.port + i
+        gsconfig = copy.deepcopy(config.groundstation)
+        gsconfig.port = gsconfig.port + i + 1
+        worker = WorkerThread(config.master, gsconfig, wconfig)
         worker.start()
         workers.append(worker)
     sleep(1)

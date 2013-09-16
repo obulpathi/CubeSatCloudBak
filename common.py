@@ -5,6 +5,10 @@ from collections import namedtuple
 
 # Packet = (sender, receiver, source, destination, datatype, payload, latency, size)
 
+# global mutex
+from threading import Lock
+gmutex = Lock()
+
 # GENERAL CONSTANTS
 KB = 1024
 KBPS = 1024

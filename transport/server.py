@@ -54,8 +54,8 @@ class TransportServerProtocol(protocol.Protocol):
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
         self.mutexsp.acquire()
-        length = len(packetstring) + 6
-        packetstring = str(length).zfill(6) + packetstring
+        length = len(packetstring)
+        packetstring = str(length).zfill(LHSIZE) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
         self.mutexsp.release()

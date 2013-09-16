@@ -29,6 +29,8 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.mytransport = MyTransport(self, "Worker")
 
     def getData(self, data):
+        # strip off the length header
+        data = data[LHSIZE:]
         self.sendPacket(data)
 
     def connectionMade(self):
@@ -60,17 +62,17 @@ class TransportWorkerProtocol(protocol.Protocol):
             log.msg("Server said: %s" % packetstring)
         # release the mutex
         self.mutexpr.release()
-        
+    
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
         self.mutexsp.acquire()
-        length = len(packetstring) + 6
-        packetstring = str(length).zfill(6) + packetstring
+        length = len(packetstring)
+        packetstring = str(length).zfill(LHSIZE) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             log.msg("Sending a fragment")
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
         self.mutexsp.release()
-        
+    
     def register(self):
         packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
@@ -94,7 +96,6 @@ class TransportWorkerProtocol(protocol.Protocol):
         packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.sendPacket(packetstring)
-        #self.transport.doWrite()
     
     def noWork(self):
         log.msg("No work")
@@ -145,8 +146,8 @@ class TransportWorkerProtocol(protocol.Protocol):
         task.deferLater(reactor, 5.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
                    
     def forwardToServer(self, packetstring):
-        length = len(packetstring) + 6
-        packetstring = str(length).zfill(6) + packetstring
+        length = len(packetstring)
+        packetstring = str(length).zfill(LHSIZE) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             log.msg("Sending a fragment")
             self.factory.fromWorkerToCSClient.put(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
@@ -156,7 +157,7 @@ class TransportWorkerProtocol(protocol.Protocol):
 
             
 class TransportWorkerFactory(protocol.ClientFactory):
-    def __init__(self, addresss, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
+    def __init__(self, address, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
         self.address = address
         self.homedir = homedir
         self.fromWorkerToCSClient = fromWorkerToCSClient

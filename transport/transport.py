@@ -1,10 +1,17 @@
-# replace 6 with header length
-# undo any hardcoded stuff ... OK :)
-
+import math
 import pickle
 from time import sleep
 from cloud.common import *
 from threading import Lock
+
+# send a packet, if needed using multiple fragments
+def sendPacket(module, packetstring):
+    module.mutexsp.acquire()
+    length = len(packetstring)
+    packetstring = str(length).zfill(LHSIZE) + packetstring
+    for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+        module.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+    module.mutexsp.release()
 
 class MyTransport(object):
     def __init__(self, transport, name = "Transport"):
@@ -23,38 +30,33 @@ class MyTransport(object):
     # received data
     def dataReceived(self, fragment):
         self.mutex.acquire()
-        # print("%s: Received a fragment" % self.name)
         # add the current fragment to fragments
         if self.fragments:
-            print("%s: Received another fragment" % self.name)
             self.fragments = self.fragments + fragment
             self.fragmentlength = self.fragmentlength + len(fragment)
         else:
-            print("%s: Received a new fragment" % self.name)
             self.packetlength = int(fragment[:LHSIZE])
-            self.fragmentlength = len(fragment)
             self.fragments = fragment[LHSIZE:]
-
+            self.fragmentlength = len(self.fragments)
+            print(self.fragmentlength, self.packetlength)
         # if we have more then one packet
         while self.fragmentlength > self.packetlength:
-            print("%s: fragmentlength: %d,\tpacketlength: %d" % (self.name, self.fragmentlength, self.packetlength))
-            packetstring = self.fragments[:self.packetlength-LHSIZE]
+            packetstring = self.fragments[:self.packetlength]
+            #print(packetstring)
             packet = pickle.loads(packetstring)
             self.transport.packetReceived(packet)
-            self.fragmentlength = self.fragmentlength - self.packetlength
-            self.packetlength = int(self.fragments[self.packetlength-LHSIZE:self.packetlength])
+            # remove old packet from fragments
             self.fragments = self.fragments[self.packetlength:]
-            print("%s: fragmentlength: %d,\tpacketlength: %d" % (self.name, self.fragmentlength, self.packetlength))               
+            # get the new packets length
+            self.packetlength = int(self.fragments[:LHSIZE])
+            # remove the packet length header from fragments
+            self.fragments = self.fragments[LHSIZE:]
+            self.fragmentlength = len(self.fragments)               
         # if we received just one packet
         if self.fragmentlength == self.packetlength:
-            packetstring = self.fragments[:self.packetlength-LHSIZE]
-            sleep(0.2)
-            packet = pickle.loads(packetstring)
-            # packet = pickle.loads(self.fragments)
+            packet = pickle.loads(self.fragments)
             self.transport.packetReceived(packet)
-            # self.reset()
             self.fragments = ""
         else: # if we received less than a packet
             print("%s: Received a fragment, waiting for more" % self.name)
-            
         self.mutex.release()
