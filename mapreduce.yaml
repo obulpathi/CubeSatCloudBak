@@ -9,7 +9,7 @@ commands:
 server:
     address: localhost
     port: 4000
-    homedir: /home/obulpathi/phd/cloud/data/server/
+    homedir: ~/cloud/data/server/
 
 groundstation:
     address: localhost
@@ -18,9 +18,9 @@ groundstation:
 master:
     address: localhost
     port: 8000
-    homedir: /home/obulpathi/phd/cloud/data/master/
+    homedir: ~/cloud/data/master/
     
 worker:
     address: localhost
     port: 8008
-    homedir: /home/obulpathi/phd/cloud/data/
+    homedir: ~/cloud/data/

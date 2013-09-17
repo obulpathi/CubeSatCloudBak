@@ -96,8 +96,8 @@ class TransportMasterFactory(protocol.Factory):
         self.mission = None
         self.transports = []
         self.registrationCount = 0
-        self.homedir = homedir
-        self.metadir = homedir + "metadata/"
+        self.homedir = os.path.expanduser(homedir)
+        self.metadir = self.homedir + "metadata/"
         self.fileMap = {}
         self.metadata = {}
         try:

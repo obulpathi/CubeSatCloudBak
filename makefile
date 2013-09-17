@@ -1,5 +1,5 @@
 all:
-	rm -rf ~/phd/cloud/data/*
+	rm -rf ~/cloud/data/*
 	python simulator.py
 
 torrent:
@@ -9,10 +9,10 @@ mapreduce:
 	echo "execute mapreduce mission"
 
 clean:
-	rm -rf ~/phd/cloud/data/*
+	rm -rf ~/cloud/data/*
 
 bootstrap:
-	mkdir ~/phd/cloud/data
+	mkdir ~/cloud/data/
 
 limit:
 	echo "set netowrk speed limits"

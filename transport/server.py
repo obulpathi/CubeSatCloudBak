@@ -118,13 +118,14 @@ class TransportServerFactory(protocol.Factory):
         self.address = "Server"
         self.buildMissions(commands)
         self.registrationCount = 100
-        self.homedir = homedir
+        self.homedir = os.path.expanduser(homedir)
         self.fileMap = {}
         self.mutex = Lock()
         try:
-            os.mkdir(homedir)
-            os.mkdir(homedir + "metadata/")
+            os.mkdir(self.homedir)
+            os.mkdir(self.homedir + "metadata/")
         except OSError:
+            print(self.homedir)
             log.msg("OSError: Unable to create data directories, exiting")
             exit(1)
        

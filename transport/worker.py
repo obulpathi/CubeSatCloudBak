@@ -18,7 +18,7 @@ from cloud.transport.transport import MyTransport
 class TransportWorkerProtocol(protocol.Protocol):
     def __init__(self, factory, homedir):
         self.factory = factory
-        self.homedir = homedir
+        self.homedir = os.path.expanduser(homedir)
         self.address = "Worker"
         self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getData)
