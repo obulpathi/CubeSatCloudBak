@@ -7,3 +7,14 @@ Image: 2.jpg   Time:  0.00203204154968
 profiling # python process.py 
 Image: 1.jpg   Time:  0.00706815719604
 Image: 2.jpg   Time:  0.423929929733
+#######################################
+profiling # python read.py                     
+Image: 1.jpg   Time:  0.000705003738403
+Image: 2.jpg   Time:  0.00932288169861
+profiling # python write.py                    
+Image: 1.jpg   Time:  0.00209999084473
+Image: 2.jpg   Time:  0.0410630702972
+profiling # python process.py                  
+Image: 1.jpg   Time:  0.0945889949799
+Image: 2.jpg   Time:  5.86034703255
+
