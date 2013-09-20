@@ -1,2 +1,3 @@
 clean:
-	rm -rf resutls/*
+	rm -rf output/*
+	rm -rf results/*

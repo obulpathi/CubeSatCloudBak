@@ -10,3 +10,4 @@ data.jpg
 data/*
 test/pickle/metadata
 tests/profiling/results/
+tests/profiling/output/
