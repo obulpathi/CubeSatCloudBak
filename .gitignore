@@ -4,6 +4,8 @@
 *.png
 NOTES
 TODO
+data.jpg
+image.jpg
 data/*
 test/pickle/metadata
 tests/profiling/results/
