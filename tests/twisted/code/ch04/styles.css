@@ -1,0 +1,19 @@
+body {
+  font-family: Georgia, Times, serif;
+  font-size: 11pt;
+}
+
+h1 {
+  margin: 10px 0;
+  padding: 5px;
+  background-color: black;
+  color: white;
+}
+
+a {
+  font-family: monospace;
+}
+
+p {
+  padding: 10px;
+}
