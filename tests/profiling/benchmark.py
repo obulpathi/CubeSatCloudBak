@@ -50,14 +50,32 @@ def profileProcess(images):
     print "Average process time:", avgProcesstime
     print "Total process time:", totalProcesstime
     print "Number of images processed:", len(images)
+
+# profile for split image into chunks
+def profileSplitImageIntoChunks(images):
+    directory = "splits/"
+    splittimes = []
+    for image in images:
+        t1 = time.time()
+        chunks, metadata = utils.splitImageIntoChunks(image, directory)
+        t2 = time.time()
+        splittimes.append(t2-t1)
+    totalSplittime = 0
+    for splittime in splittimes:
+        totalSplittime = totalSplittime + splittime
+    avgSplittime = totalSplittime / len(images)
+    print "Average split time:", avgSplittime
+    print "Total split time:", totalSplittime
+    print "Number of images split:", len(images)
         
 # main
 if __name__ == "__main__":
     images = os.listdir("images")
-    sets = [["images/10.jpg"], ["images/20.jpg"]]
+    sets = [["images/10.jpg"]]
     #sets = [["images/10.jpg"], ["images/20.jpg"], ["images/50.jpg"], ["images/100.jpg"], ["images/250.jpg"]]
     for files in sets:
         print "Profiling:", files
         profileRead(files)
         profileWrite(files)
         profileProcess(files)
+        profileSplitImageIntoChunks(files)

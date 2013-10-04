@@ -10,3 +10,4 @@ data/*
 test/pickle/metadata
 tests/profiling/results/
 tests/profiling/output/
+tests/profiling/splits/
