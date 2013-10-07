@@ -8,6 +8,13 @@ import ImageFilter
 from uuid import uuid4
 from collections import namedtuple
 
+import matplotlib.pyplot as plt
+import time
+from skimage import io
+from skimage import data
+from skimage.exposure import rescale_intensity
+import Image
+
 WIDTH = 500
 HEIGHT = 500
 Box = namedtuple('Box', 'left top right bottom')
@@ -35,19 +42,23 @@ def write(filename, data):
     image.close()
 
 def process(filename):
-    # basic find edges
-    image = Image.open(filename)
-    edges = image.filter(ImageFilter.FIND_EDGES)
-    edges.save("results/e" + os.path.split(filename)[1])
-    # image -> fft -> ifft -> image
-    image = Image.open(filename)
-    bands = image.split()
-    for i, band in enumerate(bands):
-        numpyArray = numpy.asarray(band)
-        fftArray = numpy.fft.rfft2(numpyArray)
-        ifftArray = numpy.fft.irfft2(fftArray)
-        result = Image.fromarray(ifftArray.astype(numpy.uint8))
-        result.save("results/f" + str(i) + os.path.split(filename)[1])
+    t1 = time.time()
+    image = io.imread(filename)
+    image = rescale_intensity(image, in_range=(50, 200))
+   
+    import numpy as np
+    from skimage.morphology import reconstruction
+
+    seed = np.copy(image)
+    seed[1:-1, 1:-1] = image.max()
+    mask = image
+    filled = reconstruction(seed, mask, method='erosion')
+    seed = np.copy(image)
+    seed[1:-1, 1:-1] = image.min()
+    rec = reconstruction(seed, mask, method='dilation')
+    t2 = time.time()
+    print t2 -t1
+
 
 # split the remote sensing data into chunks
 def splitImageIntoChunks(filename, directory):
