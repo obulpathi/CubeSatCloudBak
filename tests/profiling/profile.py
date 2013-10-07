@@ -16,7 +16,7 @@ def profileRead(chunks):
     avgReadtime = totalReadtime / len(chunks)
     print "Average read time:", avgReadtime
     print "Total read time:", totalReadtime
-    print "Number of chunks processed:", len(chunks)
+    print "Number of chunks read:", len(chunks)
     print "#####################################################"
 
 # profile for write
@@ -34,7 +34,7 @@ def profileWrite(chunks):
     avgWritetime = totalWritetime / len(chunks)
     print "Average write time:", avgWritetime
     print "Total write time:", totalWritetime
-    print "Number of chunks processed:", len(chunks)
+    print "Number of chunks written:", len(chunks)
     print "#####################################################"
 
 # profile for process

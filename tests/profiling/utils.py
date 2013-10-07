@@ -42,13 +42,10 @@ def write(filename, data):
     image.close()
 
 def process(filename):
-    t1 = time.time()
-    image = io.imread(filename)
-    image = rescale_intensity(image, in_range=(50, 200))
-   
     import numpy as np
     from skimage.morphology import reconstruction
-
+    image = io.imread(filename)
+    image = rescale_intensity(image, in_range=(50, 200))
     seed = np.copy(image)
     seed[1:-1, 1:-1] = image.max()
     mask = image
@@ -56,9 +53,6 @@ def process(filename):
     seed = np.copy(image)
     seed[1:-1, 1:-1] = image.min()
     rec = reconstruction(seed, mask, method='dilation')
-    t2 = time.time()
-    print t2 -t1
-
 
 # split the remote sensing data into chunks
 def splitImageIntoChunks(filename, directory):
