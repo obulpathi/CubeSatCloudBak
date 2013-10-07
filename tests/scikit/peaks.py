@@ -21,8 +21,8 @@ import Image
 
 t1 = time.time()
 
-#image = data.moon()
-image = io.imread("images/stone.jpg")
+image = data.moon()
+#image = io.imread("stone.jpg")
 # Rescale image intensity so that we can see dim features.
 image = rescale_intensity(image, in_range=(50, 200))
 

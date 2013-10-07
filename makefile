@@ -19,4 +19,7 @@ limit:
 
 install:
 	echo "Install required software"
-	sudo apt-get install python-twisted
+	sudo apt-get install python-twisted cython python-dev matplotlib numpy scipy python-pip
+	sudo pip install -U scikit-image
+	cd /usr/local/lib/python2.7/dist-packages
+	change permisssions

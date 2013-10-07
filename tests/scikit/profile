@@ -1,0 +1,19 @@
+scikit # python denoise.py 
+0.516566991806
+scikit # python entropy.py 
+1.70708203316
+scikit # python equalize.py 
+0.887017011642
+scikit # python hog.py 
+0.940587043762
+scikit # python moon.py 
+0.0129868984222
+scikit # python peaks.py 
+0.312124013901
+scikit # python polygon.py 
+0.295833826065
+scikit # python segmentation.py 
+0.310413122177
+scikit # python soble.py 
+scikit # python watershed.py 
+0.210426092148
