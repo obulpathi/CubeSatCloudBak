@@ -57,7 +57,7 @@ def splitImageIntoChunks(filename, directory):
             data.save(chunkname)
             size = os.stat(chunkname).st_size
             box = Box(left, top, right, bottom)
-            chunk = Chunk(uuid4(), prefix + os.path.split(chunkname)[1], size, box)
+            chunk = Chunk(str(uuid4()), prefix + os.path.split(chunkname)[1], size, box)
             chunks[chunk.uuid] = chunk
             count = count + 1
     metadata["filename"] = filename

@@ -84,6 +84,16 @@ class Work(object):
         self.payload = payload
     def __repr__(self):
         return "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename
+    def tostr(self):
+        strrepr = str(self.uuid) + ":" + self.job + ":" + self.filename
+        if self.payload:
+            strrepr = strrepr + ":" + self.payload
+        return strrepr
+    def fromstr(self, initstr):
+        fields = initstr.split(":")
+        self.uuid = fields[0]
+        self.job = fields[1]
+        self.filename = fields[2]
 
 class Chunk(object):
     def __init__(self, uuid, name, size, box):

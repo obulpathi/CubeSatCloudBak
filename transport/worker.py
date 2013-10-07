@@ -9,13 +9,15 @@ from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
+from twisted.protocols.basic import LineReceiver
 
 from threading import Lock
 
+from cloud import utils
 from cloud.common import *
 from cloud.transport.transport import MyTransport
 
-class TransportWorkerProtocol(protocol.Protocol):
+class TransportWorkerProtocol(LineReceiver):
     def __init__(self, factory, homedir):
         self.factory = factory
         self.homedir = os.path.expanduser(homedir)
@@ -37,10 +39,35 @@ class TransportWorkerProtocol(protocol.Protocol):
         log.msg("Worker connection made >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.")
         self.register()
 
+    """
     # received data
     def dataReceived(self, fragment):
         self.mytransport.dataReceived(fragment)
+    """
+    # line received
+    def lineReceived(self, line):
+        fields = line.split(":")
+        command = fields[0]
+        if command == "REGISTERED":
+            self.registered(fields[1])
+        elif command == "NO_WORK":
+            self.noWork()
+        elif command == "WORK":
+            work = Work(fields[1], fields[2], fields[3], None)
+            if work.job == "PROCESS":
+                work.payload = fields[4]
+            self.gotWork(work)
+            if work.job == "STORE":
+                self.setRawMode()
+        else:
+            print(line)
 
+    def rawDataReceived(self, data):
+        utils.banner("RAW_DATA")
+        self.setLineMode()
+        self.work.payload = data
+        self.gotWork(self.work)
+                            
     # receive packet    
     def packetReceived(self, packet):
         # acquire the mutex
@@ -74,12 +101,14 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.mutexsp.release()
     
     def register(self):
-        packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.sendPacket(packetstring)
+        #packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
+        #packetstring = pickle.dumps(packet)
+        self.sendLine("REGISTER")
+        #self.sendPacket(packetstring)
         
-    def registered(self, packet):
-        self.address = packet.payload
+    def registered(self, address):
+        utils.banner("REGISTERED")
+        self.address = address
         self.homedir = self.homedir + str(self.address) + "/"
         try:
             os.mkdir(self.homedir)
@@ -93,9 +122,13 @@ class TransportWorkerProtocol(protocol.Protocol):
         self.transport.loseConnection()
 
     def getWork(self, work = None):
-        packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", work, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.sendPacket(packetstring)
+        if work:
+            self.sendLine("WORK:" + self.address + ":" + work.tostr())
+        else:
+            self.sendLine("WORK:" + self.address + ":")
+        #packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", work, HEADERS_SIZE)
+        #packetstring = pickle.dumps(packet)
+        #self.sendPacket(packetstring)
     
     def noWork(self):
         log.msg("No work")
@@ -103,7 +136,10 @@ class TransportWorkerProtocol(protocol.Protocol):
     
     def gotWork(self, work):
         if work.job == "STORE":
-            self.store(work)
+            if work.payload:
+                self.store(work)
+            else:
+                self.work = work
         elif work.job == "PROCESS":
             self.process(work)
         elif work.job == "DOWNLINK":

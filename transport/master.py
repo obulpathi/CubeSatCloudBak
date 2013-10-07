@@ -8,12 +8,13 @@ from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
+from twisted.protocols.basic import LineReceiver
 
 from cloud import utils
 from cloud.common import *
 from cloud.transport.transport import MyTransport
 
-class TransportMasterProtocol(protocol.Protocol):
+class TransportMasterProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
         self.status = IDLE
@@ -22,9 +23,26 @@ class TransportMasterProtocol(protocol.Protocol):
         self.mytransport = MyTransport(self, "Master")
         
     # received data
+    """
     def dataReceived(self, fragment):
         self.mytransport.dataReceived(fragment)
-                            
+    """
+    
+    # line received
+    def lineReceived(self, line):
+        fields = line.split(":")
+        command = fields[0]
+        if command == "REGISTER":
+            self.registerWorker()
+        elif command == "WORK":
+            if fields[2]:
+                work = Work(fields[2], fields[3], fields[4], None)
+                self.getWork(fields[1], work)            
+            else:
+                self.getWork(fields[1], None)
+        else:
+            print(line)
+                                    
     # received a packet
     def packetReceived(self, packet):
         self.mutexpr.acquire()
@@ -53,40 +71,63 @@ class TransportMasterProtocol(protocol.Protocol):
         self.mutexsp.release()
                 
     # register worker
-    def registerWorker(self, packet):
+    # def registerWorker(self, packet):
+    def registerWorker(self):        
         log.msg("registered worker")
         self.factory.registrationCount = self.factory.registrationCount + 1
+        """
         packet = Packet(self.factory.address, self.factory.registrationCount, 
                         self.factory.address, self.factory.registrationCount, 
                         REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.sendPacket(packetstring)
+        """
+        self.sendLine("REGISTERED:" + str(self.factory.registrationCount))
+        utils.banner("REGISTER")
         self.status = REGISTERED
         
     # get work to workers
     def getWork(self, worker, finishedWork = None):
-        work = self.factory.getWork(worker, finishedWork)
+        utils.banner("GET WORK")
+        work, data = self.factory.getWork(worker, finishedWork)
         if not work:
             self.noWork(worker)
         else:
-            self.sendWork(worker, work)
+            self.sendWork(work, data)
             
     # send no work message
     def noWork(self, destination):
+        self.sendLine("NO_WORK")
+        utils.banner("NO_WORK")
+        
+        """
         packet = Packet(self.factory.address, "Receiver",
                         self.factory.address, destination,
                         "NO_WORK", None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.sendPacket(packetstring)
-
+        """
+        
     # send work
-    def sendWork(self, destination, work):
+    def sendWork(self, work, data):
+        utils.banner("WORK")
+        metadata = work.tostr()
+        self.sendLine("WORK:" + metadata)
+        if work.job == "STORE":
+            self.sendData(data)
+    
+    def sendData(self, data):
+        self.setRawMode()
+        self.transport.write(data)
+        self.setLineMode()
+        
+        """
         packet = Packet(self.factory.address, "Receiver",
                         self.factory.address, destination,
                         "WORK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.sendPacket(packetstring)
-
+        """
 
 # Master factory
 class TransportMasterFactory(protocol.Factory):
@@ -215,9 +256,9 @@ class TransportMasterFactory(protocol.Factory):
         if oldWork:
             self.finishedWork(oldWork, worker)
         if not self.mission:
-            return None
+            return None, None
         if self.mission.operation == SENSE:
-            return None
+            return None, None
         elif self.mission.operation == STORE:
             return self.getStoreWork(worker)
         elif self.mission.operation == PROCESS:
@@ -226,7 +267,7 @@ class TransportMasterFactory(protocol.Factory):
             return self.getDownlinkWork(worker)
         else:
             log.msg("ERROR: Unknown mission: %s" % mission)
-            return None
+            return None, None
     
     def getStoreWork(self, worker):
         log.msg("Store work requested by worker")
@@ -236,12 +277,12 @@ class TransportMasterFactory(protocol.Factory):
                 chunk.worker = worker
                 chunk.status = "ASSIGNED"
                 data = open(directory + chunk.name).read()
-                work = Work(chunk.uuid, "STORE", chunk.name, data)
+                work = Work(chunk.uuid, "STORE", chunk.name, None)
                 log.msg(chunk)
-                return work
+                return work, data
         # no work: set a callback to check if mission is complete and return
         task.deferLater(reactor, 0.15, self.isMissionComplete)
-        return None
+        return None, None
 
     def getProcessWork(self, worker):
         log.msg("Process work requested by worker")
@@ -252,10 +293,11 @@ class TransportMasterFactory(protocol.Factory):
                 chunk.status = "ASSIGNED"
                 work = Work(chunk.uuid, "PROCESS", chunk.name, self.mission.output.split(".")[0])
                 log.msg(work)
-                return work
+                return work, None
         # no work: check if mission is complete
         if self.isProcessMissionComplete():
             self.processMissionComplete(self.mission)
+        return None, None
         
     def getDownlinkWork(self, worker):
         log.msg("Downlink work requested by worker")
@@ -266,10 +308,11 @@ class TransportMasterFactory(protocol.Factory):
                 chunk.status = "ASSIGNED"
                 work = Work(chunk.uuid, "DOWNLINK", chunk.name, None)
                 log.msg(work)
-                return work
+                return work, None
         # no work: check if mission is complete
         if self.isDownlinkMissionComplete():
             self.downlinkMissionComplete(self.mission)
+        return  None, None
         
     def finishedWork(self, work, worker):
         if self.mission.operation == STORE:
@@ -290,7 +333,7 @@ class TransportMasterFactory(protocol.Factory):
         else:
             chunkMap[chunk.worker] = [chunk]
         del self.chunks[work.uuid]
-
+    
     def finishedProcessWork(self, work, worker):
         chunkMap = self.metadata["chunkMap"]
         chunks = chunkMap[worker]
