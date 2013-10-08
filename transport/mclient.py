@@ -20,25 +20,18 @@ class TransportMasterClientProtocol(LineReceiver):
         self.waiter.start()
         self.mutexpr = Lock()
         self.mutexsp = Lock()
+        self.MAX_LENGTH = 50000
         self.mytransport = MyTransport(self, "MClient")
 
     def lineReceived(self, line):
         self.factory.fromMasterClientToMaster.put(line)
         
     def getData(self, packet):
-        log.msg("MasterClient: Got a packet from Master, sending it to gsserver")
-        utils.banner("********************************************************************")
         log.msg(packet)
         self.sendLine(packet)
 
     def connectionMade(self):
         task.deferLater(reactor, 2, self.register)
-    
-    """
-    # received data
-    def dataReceived(self, fragment):
-        self.mytransport.dataReceived(fragment)
-    """
     
     # received a packet
     def packetReceived(self, packet):

@@ -35,14 +35,8 @@ class TransportWorkerProtocol(LineReceiver):
         self.sendPacket(data)
 
     def connectionMade(self):
-        log.msg("Worker connection made >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.")
         self.register()
 
-    """
-    # received data
-    def dataReceived(self, fragment):
-        self.mytransport.dataReceived(fragment)
-    """
     # line received
     def lineReceived(self, line):
         fields = line.split(":")
@@ -125,9 +119,6 @@ class TransportWorkerProtocol(LineReceiver):
             self.sendLine("WORK:" + self.address + ":" + work.tostr())
         else:
             self.sendLine("WORK:" + self.address + ":")
-        #packet = Packet(self.address, "Receiver", self.address, "Server", "GET_WORK", work, HEADERS_SIZE)
-        #packetstring = pickle.dumps(packet)
-        #self.sendPacket(packetstring)
     
     def noWork(self):
         log.msg("No work")
@@ -178,22 +169,11 @@ class TransportWorkerProtocol(LineReceiver):
         metadata = "CHUNK:" + work.tostr()
         self.forwardToServer(metadata, data)
         task.deferLater(reactor, 5.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
-        """
-        work.payload = data
-        packet = Packet(self.address, "Receiver", self.address, "Server", "CHUNK", work, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.forwardToServer(packetstring)
-        """
                    
     def forwardToServer(self, metadata, data):
         self.factory.fromWorkerToCSClient.put(metadata)
         self.factory.fromWorkerToCSClient.put(data)
-        """
-        length = len(data)
-        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
-            log.msg("Sending a fragment")
-            self.factory.fromWorkerToCSClient.put(data[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
-        """    
+   
     def forwardToChild(self, packet):
         self.factory.fromWorkerToCSServer.put(packet)
 

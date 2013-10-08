@@ -22,12 +22,6 @@ class TransportMasterProtocol(LineReceiver):
         self.mutexpr = Lock()
         self.mutexsp = Lock()
         self.mytransport = MyTransport(self, "Master")
-        
-    # received data
-    """
-    def dataReceived(self, fragment):
-        self.mytransport.dataReceived(fragment)
-    """
     
     # line received
     def lineReceived(self, line):
@@ -76,15 +70,7 @@ class TransportMasterProtocol(LineReceiver):
     def registerWorker(self):        
         log.msg("registered worker")
         self.factory.registrationCount = self.factory.registrationCount + 1
-        """
-        packet = Packet(self.factory.address, self.factory.registrationCount, 
-                        self.factory.address, self.factory.registrationCount, 
-                        REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.sendPacket(packetstring)
-        """
         self.sendLine("REGISTERED:" + str(self.factory.registrationCount))
-        # utils.banner("REGISTER")
         self.status = REGISTERED
         
     # get work to workers
@@ -100,15 +86,6 @@ class TransportMasterProtocol(LineReceiver):
     # send no work message
     def noWork(self, destination):
         self.sendLine("NO_WORK")
-        # utils.banner("NO_WORK")
-        
-        """
-        packet = Packet(self.factory.address, "Receiver",
-                        self.factory.address, destination,
-                        "NO_WORK", None, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.sendPacket(packetstring)
-        """
         
     # send work
     def sendWork(self, work, data):
@@ -122,14 +99,6 @@ class TransportMasterProtocol(LineReceiver):
         self.setRawMode()
         self.transport.write(data)
         self.setLineMode()
-        
-        """
-        packet = Packet(self.factory.address, "Receiver",
-                        self.factory.address, destination,
-                        "WORK", work, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        self.sendPacket(packetstring)
-        """
 
 # Master factory
 class TransportMasterFactory(protocol.Factory):
@@ -194,12 +163,6 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("Requesting for new mission")
         data = "GET_MISSION"
         self.fromMasterToMasterClient.put(data)
-        """
-        packet = Packet("Master", "Receiver",
-                        "Master", "Server", 
-                        GET_MISSION, None, HEADERS_SIZE)
-        self.fromMasterToMasterClient.put(packet)
-        """
 
     def gotMission(self, mission):
         if mission:
@@ -416,14 +379,13 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("Store Mission Accomplished")
         # send the metadata
         self.fileMap[self.metadata.filename] = self.metadata
-        # self.sendMetadata(self.metadata)
-        self.metadata.save(self.metadir)
-        #task.deferLater(reactor, 0.1, self.missionComplete, self.mission)
-        self.missionComplete(self.mission)
+        self.sendMetadata(self.metadata)
+        # self.metadata.save(self.metadir)
+        task.deferLater(reactor, 1, self.missionComplete, self.mission)
+        #self.missionComplete(self.mission)
 
     def processMissionComplete(self, mission):
         log.msg("Process Mission Accomplished")
-        log.msg(self.metadata)
         log.msg(mission)
         subdirname = mission.output.split(".")[0] + "/"
         # making changes to metadata
@@ -433,7 +395,6 @@ class TransportMasterFactory(protocol.Factory):
                 chunk.name = subdirname + os.path.split(chunk.name)[1]
         self.metadata.directory = os.path.split(self.metadata.directory)[0] + "/" + subdirname
         self.metadata.filename = mission.output
-        log.msg(self.metadata)
         # send the metadata
         log.msg("sending metadata")
         self.fileMap[self.metadata.filename] = self.metadata

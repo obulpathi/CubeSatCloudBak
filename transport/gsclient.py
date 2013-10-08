@@ -37,13 +37,6 @@ class TransportGSClientProtocol(LineReceiver):
 
     def lineReceived(self, line):
         self.uplinkToCubeSat(line)
-        print("###################### GSClient: ", line)
-        
-    """
-    # received data
-    def dataReceived(self, fragment):
-        self.mytransport.dataReceived(fragment)
-    """
                 
     # received a packet
     def packetReceived(self, packet):
@@ -77,9 +70,6 @@ class TransportGSClientProtocol(LineReceiver):
         self.transport.loseConnection()
     
     def uplinkToCubeSat(self, packetstring):
-        #log.msg("Groung station: Uplinking to CubeSat >>>>>>>>>>>>>>>>>>")
-        #length = len(packetstring)
-        #packetstring = str(length).zfill(LHSIZE) + packetstring
         self.factory.fromGSClientToGSServer.put(packetstring)
 
 

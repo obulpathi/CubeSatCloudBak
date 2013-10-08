@@ -65,11 +65,7 @@ def stichChunksIntoImage(directory, filename, metadata):
 
     # creates a new empty image, RGB mode, and size width by height
     result = Image.new('RGB', (width, height))
-
-    banner("###################################################################")
-    print(metadata)
     chunkMap = metadata.chunkMap
-    print(chunkMap)
     for chunks in chunkMap.itervalues():
         for chunk in chunks:
             chunkname = directory + chunk.name

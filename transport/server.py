@@ -42,9 +42,6 @@ class TransportServerProtocol(LineReceiver):
             self.unregister(packet)
         elif command == GET_MISSION:
             self.getMission(packet.sender)
-        elif command == "METADATA":
-            pass
-            #self.factory.receivedMetadata(packet.payload)
         elif command == "COMPLETED_MISSION":
             self.factory.finishedMission(packet.payload)
         elif command == "MISSION":
@@ -113,18 +110,10 @@ class TransportServerProtocol(LineReceiver):
         self.sendPacket(packetstring)
                 
     def getMission(self):
-        print("IN GET_MISSION ############################")
         mission = self.factory.getMission()
         data = "MISSION:" + mission.tostr()
         print(data)
         self.sendLine(data)
-        """
-        packet = Packet(self.factory.address, receiver, self.factory.address, "Master", \
-                        MISSION, mission, HEADERS_SIZE)
-        packetstring = pickle.dumps(packet)
-        log.msg(packet)
-        self.sendPacket(packetstring)
-        """
         
 # Server factory
 class TransportServerFactory(protocol.Factory):
@@ -207,18 +196,16 @@ class TransportServerFactory(protocol.Factory):
         if self.missions:
             mission = self.missions[0]
             self.missions = self.missions[1:]
-            #log.msg("Sending mission #################$: %s" % mission)
+            log.msg("Sending mission: %s" % mission)
             packet = "MISSION:" + mission.tostr()
             self.fromServerToSServer.put(packet)
         else:
             self.fromServerToSServer.put("MISSION:") 
     
     def receivedMetadata(self, metastring):
-        log.msg(metastring)
+        # log.msg(metastring)
         metadata = Metadata()
         metadata.fromstr(metastring)
-        print("******************************************************************")
-        print metadata.tostr()
         self.fileMap[metadata.filename] = metadata
         self.finishedDownlinkMission(metadata.filename)
 

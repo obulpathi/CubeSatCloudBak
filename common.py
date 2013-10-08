@@ -207,10 +207,6 @@ class Struct(object):
     def __repr__(self):
         return '{%s}' % str(', '.join('%s : %s' % (key, repr(value)) for (key, value) in self.__dict__.iteritems()))
 
-"""
-{'filename': 'result.jpg', 'height': 162, 'width': 182, 'directory': '/home/obulpathi/cloud/data/master/result/result/', 'chunkMap': {'1': [Name: result/0.jpg, Size: 3194, Box: Box(left=0, top=0, right=100, bottom=100), Status: FINISHED, Worker: 1, Name: result/3.jpg, Size: 1993, Box: Box(left=100, top=100, right=182, bottom=162), Status: FINISHED, Worker: 1, Name: result/2.jpg, Size: 1721, Box: Box(left=0, top=100, right=100, bottom=162), Status: FINISHED, Worker: 1, Name: result/1.jpg, Size: 2192, Box: Box(left=100, top=0, right=182, bottom=100), Status: FINISHED, Worker: 1]}, 'size': 'SIZE'}
-"""
-
 class Metadata(object):
     def __init__(self):
         pass
@@ -279,9 +275,7 @@ class Metadata(object):
             numOfChunks = int(fields[1])
             self.chunkMap[worker] = []
             fields = fields[2:]
-            print fields
             for chunkcount in range(numOfChunks):
-                print fields
                 box = Box(int(fields[3]), int(fields[4]), int(fields[5]), int(fields[6]))
                 chunk = Chunk(fields[0], fields[1], int(fields[2]), box)
                 fields = fields[7:]
