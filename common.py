@@ -181,13 +181,10 @@ class Mission(object):
         """
         return "Mission: " + self.operation + ", filename: " + self.filename + ", UUID: " + str(self.uuid)
     def tostr(self):
-        return self.operation + ":" + self.filename + ":" + str(self.uuid)
-
-class Metadata(object):
-    def __init__(self):
-        pass
-    def __repr__(self):
-        return "Metadata >>>>>>>>>>>>>>>>>>>>>"
+        strrepr = self.operation + ":" + self.filename + ":" + str(self.uuid)
+        if self.operation == "PROCESS":
+            strrepr = strrepr + ":" + self.output
+        return strrepr
                 
 class WaitForData(threading.Thread):
     def __init__(self, queue, callback):
@@ -209,3 +206,83 @@ class Struct(object):
                setattr(self, key, Struct(value) if isinstance(value, dict) else value)
     def __repr__(self):
         return '{%s}' % str(', '.join('%s : %s' % (key, repr(value)) for (key, value) in self.__dict__.iteritems()))
+
+"""
+{'filename': 'result.jpg', 'height': 162, 'width': 182, 'directory': '/home/obulpathi/cloud/data/master/result/result/', 'chunkMap': {'1': [Name: result/0.jpg, Size: 3194, Box: Box(left=0, top=0, right=100, bottom=100), Status: FINISHED, Worker: 1, Name: result/3.jpg, Size: 1993, Box: Box(left=100, top=100, right=182, bottom=162), Status: FINISHED, Worker: 1, Name: result/2.jpg, Size: 1721, Box: Box(left=0, top=100, right=100, bottom=162), Status: FINISHED, Worker: 1, Name: result/1.jpg, Size: 2192, Box: Box(left=100, top=0, right=182, bottom=100), Status: FINISHED, Worker: 1]}, 'size': 'SIZE'}
+"""
+
+class Metadata(object):
+    def __init__(self):
+        pass
+
+    # save the metadata into file
+    def save(self, directory):
+        # reconstruct the whole file path
+        filename = directory + self.filename.split(".")[0]
+        print("Saving metadata for the file: %s" % filename)
+        metafile = open(filename, "w")
+        metastring = self.tostr()
+        metafile.write(metastring)
+        metafile.close()
+    
+    def __repr__(self):
+        data = self.filename
+        data = data +  "\n" + str(self.height)
+        data = data + "\n" + str(self.width)
+        data = data + "\n" + self.directory
+        chunkMap = self.chunkMap
+        numOfWorkers = len(chunkMap)
+        data = data +  "\n" + str(numOfWorkers)
+        for worker, chunklist in chunkMap.iteritems():
+            data = data +  "\n" + str(worker)
+            for chunk in chunklist:
+                data = data +  ":" + chunk.uuid
+                data = data +  ":" + chunk.name
+                data = data +  ":" + str(chunk.size)
+                data = data +  ":" + str(chunk.box)
+                data = data +  ":" + str(chunk.box) + "\n"
+        return data
+
+    def tostr(self):
+        data = self.filename
+        data = data +  ":" + str(self.height)
+        data = data + ":" + str(self.width)
+        data = data + ":" + self.directory
+        chunkMap = self.chunkMap
+        numOfWorkers = len(chunkMap)
+        data = data +  ":" + str(numOfWorkers)
+        for worker, chunklist in chunkMap.iteritems():
+            data = data +  ":" + str(worker)
+            numOfChunks = len(chunklist)
+            data = data +  ":" + str(numOfChunks)
+            for chunk in chunklist:
+                data = data +  ":" + chunk.uuid
+                data = data +  ":" + chunk.name
+                data = data +  ":" + str(chunk.size)
+                data = data +  ":" + str(chunk.box.left)
+                data = data +  ":" + str(chunk.box.top)
+                data = data +  ":" + str(chunk.box.right)
+                data = data +  ":" + str(chunk.box.bottom)
+        return data
+
+    def fromstr(self, metadata):
+        fields = metadata.split(":")
+        self.filename = fields[0]
+        self.height = int(fields[1])
+        self.width = int(fields[2])
+        self.directory = fields[3]
+        self.chunkMap = {}
+        numOfWorkers = int(fields[4])
+        fields = fields[5:]
+        for count in range(numOfWorkers):
+            worker = fields[0]
+            numOfChunks = int(fields[1])
+            self.chunkMap[worker] = []
+            fields = fields[2:]
+            print fields
+            for chunkcount in range(numOfChunks):
+                print fields
+                box = Box(int(fields[3]), int(fields[4]), int(fields[5]), int(fields[6]))
+                chunk = Chunk(fields[0], fields[1], int(fields[2]), box)
+                fields = fields[7:]
+                self.chunkMap[worker].append(chunk)

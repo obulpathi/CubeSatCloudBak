@@ -9,6 +9,7 @@ from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
 
 from cloud.common import *
+from cloud import utils
 from cloud.transport.transport import MyTransport
 
 class TransportMasterClientProtocol(LineReceiver):
@@ -26,6 +27,7 @@ class TransportMasterClientProtocol(LineReceiver):
         
     def getData(self, packet):
         log.msg("MasterClient: Got a packet from Master, sending it to gsserver")
+        utils.banner("********************************************************************")
         log.msg(packet)
         self.sendLine(packet)
 

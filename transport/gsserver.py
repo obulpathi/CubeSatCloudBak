@@ -10,6 +10,7 @@ from cloud.common import *
 class TransportGSServerProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
+        self.mode = "LINE"
         self.waiter = WaitForData(self.factory.fromGSClientToGSServer, self.getData)
         self.waiter.start()
 
@@ -20,8 +21,12 @@ class TransportGSServerProtocol(LineReceiver):
     def lineReceived(self, line):
         log.msg("GSServer: Got a packet, sending GSClient")
         self.factory.fromGSServerToGSClient.put(line)
+        self.setRawMode()
 
-
+    def rawDataReceived(self, data):
+        self.factory.fromGSServerToGSClient.put(data)
+        self.setLineMode()
+        
 class TransportGSServerFactory(protocol.Factory):
     def __init__(self, fromGSClientToGSServer, fromGSServerToGSClient):
         self.fromGSClientToGSServer = fromGSClientToGSServer

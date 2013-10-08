@@ -5,19 +5,29 @@ from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
+from twisted.protocols.basic import LineReceiver
 
+from cloud import utils
 from cloud.common import *
 
-class TransportCSClientProtocol(protocol.Protocol):
+class TransportCSClientProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
         self.id = None
+        self.mode = "LINE"
         self.waiter = WaitForData(self.factory.fromWorkerToCSClient, self.getData)
         self.waiter.start()
         self.mutexsp = Lock()
 
     def getData(self, data):
-        self.transport.write(data)
+        if self.mode == "LINE":
+            self.sendLine(data)
+            self.mode = "RAW"
+            self.setRawMode()
+        else:
+            self.transport.write(data)
+            self.mode = "LINE"
+            self.setLineMode()
 
     def connectionMade(self):
         log.msg("Worker connection made")

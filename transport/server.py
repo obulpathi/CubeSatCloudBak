@@ -19,6 +19,7 @@ class TransportServerProtocol(LineReceiver):
         self.factory = factory
         self.homedir = homedir
         self.name = "Server"
+        self.mode = "LINE"
         self.mutexpr = Lock()
         self.mutexsp = Lock()
         self.mytransport = MyTransport(self, self.name)
@@ -28,8 +29,10 @@ class TransportServerProtocol(LineReceiver):
         print(line)
         fields = line.split(":")
         command = fields[0]
-        if command == "GET_MISSION":
-            self.getMission()
+        if command == "CHUNK":
+            self.chunk = Chunk(fields[1], fields[3], fields[4], None)
+            self.mode = "RAW"
+            self.setRawMode()
         elif command == REGISTER:
             if packet.source == "GroundStation":
                 self.registerGroundStation(packet)
@@ -39,8 +42,6 @@ class TransportServerProtocol(LineReceiver):
             self.unregister(packet)
         elif command == GET_MISSION:
             self.getMission(packet.sender)
-        elif command == CHUNK or command == "CHUNK":
-            self.receivedChunk(packet.payload)
         elif command == "METADATA":
             pass
             #self.factory.receivedMetadata(packet.payload)
@@ -53,7 +54,12 @@ class TransportServerProtocol(LineReceiver):
             print(line)
             utils.banner("LINE")
         self.mutexpr.release()
-        
+    
+    def rawDataReceived(self, data):
+        utils.banner("RAW_DATA")
+        self.receivedChunk(data)
+        self.setLineMode()
+            
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
         self.mutexsp.acquire()
@@ -88,13 +94,13 @@ class TransportServerProtocol(LineReceiver):
         self.sendPacket(packetstring)
 
     # received a chunk
-    def receivedChunk(self, chunk):
-        log.msg(chunk.filename)
-        filename = self.homedir + chunk.filename
+    def receivedChunk(self, data):
+        log.msg(self.chunk.name)
+        filename = self.homedir + self.chunk.name
         if not os.path.exists(os.path.split(filename)[0]):
             os.mkdir(os.path.split(filename)[0])
         handler = open(filename, "w")
-        handler.write(chunk.payload)
+        handler.write(data)
         handler.close()
 
     def finishedMission(self, mission):
@@ -122,7 +128,7 @@ class TransportServerProtocol(LineReceiver):
         
 # Server factory
 class TransportServerFactory(protocol.Factory):
-    def __init__(self, commands, homedir):
+    def __init__(self, commands, homedir, fromSServerToServer, fromServerToSServer):
         self.address = "Server"
         self.buildMissions(commands)
         self.registrationCount = 100
@@ -136,10 +142,19 @@ class TransportServerFactory(protocol.Factory):
             print(self.homedir)
             log.msg("OSError: Unable to create data directories, exiting")
             exit(1)
+        self.fromSServerToServer = fromSServerToServer
+        self.fromServerToSServer = fromServerToSServer
+        self.waiter = WaitForData(self.fromSServerToServer, self.getData)
+        self.waiter.start()
        
     def buildProtocol(self, addr):
         return TransportServerProtocol(self, self.homedir)
     
+    def getData(self, line):
+        #log.msg("Server: Got a packet from SServer")
+        log.msg(line)
+        self.lineReceived(line)
+        
     def buildMissions(self, commands):
         self.missions = []
         if not commands:
@@ -156,21 +171,56 @@ class TransportServerFactory(protocol.Factory):
             if command.operation == PROCESS:
                 mission.output = command.output
             self.missions.append(mission)
-        
-    def getMission(self):
+
+    def lineReceived(self, line):
+        print(line)
+        fields = line.split(":")
+        command = fields[0]
+        if command == "GET_MISSION":
+            self.sendMission()
+        elif command == "METADATA":
+            self.receivedMetadata(line[9:])
+        elif command == REGISTER:
+            if packet.source == "GroundStation":
+                self.registerGroundStation(packet)
+            else:
+                self.registerCubeSat(packet)
+        elif command == UNREGISTER:
+            self.unregister(packet)
+        elif command == GET_MISSION:
+            self.getMission(packet.sender)
+        elif command == CHUNK or command == "CHUNK":
+            self.receivedChunk(packet.payload)
+        elif command == "COMPLETED_MISSION":
+            self.factory.finishedMission(packet.payload)
+        elif command == "MISSION":
+            self.finishedMission(packet.payload)
+        else:
+            log.msg("Received unkown packet: %s", line)
+            print(line)
+            utils.banner("LINE")
+                
+    def sendMission(self):
         mission = None
         if not self.missions:
             return None
         if self.missions:
             mission = self.missions[0]
             self.missions = self.missions[1:]
-            log.msg("Sending mission: %s" % mission)
-        return mission
+            #log.msg("Sending mission #################$: %s" % mission)
+            packet = "MISSION:" + mission.tostr()
+            self.fromServerToSServer.put(packet)
+        else:
+            self.fromServerToSServer.put("MISSION:") 
     
-    def receivedMetadata(self, metadata):
-        log.msg("Received metadata")
-        log.msg(metadata)
-        self.fileMap[metadata["filename"]] = metadata
+    def receivedMetadata(self, metastring):
+        log.msg(metastring)
+        metadata = Metadata()
+        metadata.fromstr(metastring)
+        print("******************************************************************")
+        print metadata.tostr()
+        self.fileMap[metadata.filename] = metadata
+        self.finishedDownlinkMission(metadata.filename)
 
     def finishedMission(self, mission):
         self.mutex.acquire()

@@ -6,16 +6,6 @@ from uuid import uuid4
 
 from cloud.common import *
 
-# save the metadata into file
-def saveMetadata(metadata, directory):
-    # reconstruct the whole file path
-    filename = directory + metadata["filename"].split(".")[0]
-    print("Saving metadata for the file: %s" % filename)
-    metafile = open(filename, "w")
-    metastring = pickle.dumps(metadata)
-    metafile.write(metastring)
-    metafile.close()
-
 # load the metadata from the given file
 # change the status of the chunks, after reading metadata        
 def loadMetadata(filename):
@@ -32,7 +22,7 @@ def loadMetadata(filename):
     
 # split the remote sensing data into chunks
 def splitImageIntoChunks(filename, directory):
-    metadata = {}
+    metadata = Metadata()
     chunks = {}
     # check if the file exists
     if not os.path.isfile(filename):
@@ -60,23 +50,25 @@ def splitImageIntoChunks(filename, directory):
             chunk = Chunk(str(uuid4()), prefix + os.path.split(chunkname)[1], size, box)
             chunks[chunk.uuid] = chunk
             count = count + 1
-    metadata["filename"] = filename
-    metadata["directory"] = directory
-    metadata["width"] = width
-    metadata["height"] = height
-    metadata["size"] = "SIZE"
-    metadata["chunkMap"] = {}
+    metadata.filename = filename
+    metadata.directory = directory
+    metadata.width = width
+    metadata.height = height
+    metadata.size = "SIZE"
+    metadata.chunkMap = {}
     return (chunks, metadata)
 
 # stich chunks into image
 def stichChunksIntoImage(directory, filename, metadata):
-    width = metadata["width"]
-    height = metadata["height"]
+    width = metadata.width
+    height = metadata.height
 
     # creates a new empty image, RGB mode, and size width by height
     result = Image.new('RGB', (width, height))
 
-    chunkMap = metadata["chunkMap"]
+    banner("###################################################################")
+    print(metadata)
+    chunkMap = metadata.chunkMap
     print(chunkMap)
     for chunks in chunkMap.itervalues():
         for chunk in chunks:
@@ -90,28 +82,6 @@ def stichChunksIntoImage(directory, filename, metadata):
             result.paste(data, (chunk.box.left, chunk.box.top))
     result.save(filename)
     return
-
-def serializeMetadata(metadata):
-    data = metadata.filename
-    data = data +  ":" + height
-    data = data + ":" + width
-    data = data + ":" + directory
-    chunkMap = metadata["chunkMap"]
-    numOfWorkers = len(chunkMap)
-    data = data +  ":" + str(numOfWorkers)
-    for worker, chunklist in chunkMap.iteritems():
-        data = data +  ":" + str(worker)
-        numOfChunks = len(chunklist)
-        data = data +  ":" + str(numOfChunks)
-        for chunk in chunklist:
-            data = data +  ":" + chunk.name
-            data = data +  ":" + chunk.size
-            data = data +  ":" + chunk.box
-            data = data +  ":" + chunk.box
-    return data
-
-def deserializeMetadata(data):
-    pass
             
 def banner(msg):
     print("#############################################################")

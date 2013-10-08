@@ -4,6 +4,7 @@ from twisted.internet import reactor
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
 
+from cloud import utils
 from cloud.common import *
 
 class TransportSServerProtocol(LineReceiver):
@@ -23,14 +24,11 @@ class TransportSServerProtocol(LineReceiver):
     def connectionMade(self):
         log.msg("Connection made")
 
-    def lineReceived(self, line):
-        self.uplinkToCubeSat(line)
-
 
 class TransportSServerFactory(protocol.Factory):
     def __init__(self, fromSServerToServer, fromServerToSServer):
         self.fromSServerToServer = fromSServerToServer
-        self.fromServerToSServer = fromSServerToServer
+        self.fromServerToSServer = fromServerToSServer
         
     def buildProtocol(self, addr):
-        return TransportGSServerProtocol(self)
+        return TransportSServerProtocol(self)

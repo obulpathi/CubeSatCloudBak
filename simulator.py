@@ -13,6 +13,7 @@ from cloud.common import *
 from cloud.transport.master import *
 from cloud.transport.mclient import *
 from cloud.transport.server import *
+from cloud.transport.sserver import *
 from cloud.transport.gsserver import *
 from cloud.transport.gsclient import *
 from cloud.transport.worker import *
@@ -21,13 +22,14 @@ from cloud.transport.csclient import *
 
 class MasterThread(threading.Thread):
     def __init__(self, config):
-        self.config = config
+        self.config = config.master
+        self.sconfig = config.server
         self.fromMasterToMasterClient = Queue.Queue()
         self.fromMasterClientToMaster = Queue.Queue()
         threading.Thread.__init__(self)
 
     def run(self):
-        reactor.connectTCP(config.groundstation.address, config.groundstation.port, 
+        reactor.connectTCP(self.sconfig.address, self.sconfig.ssport, 
                         TransportMasterClientFactory(self.fromMasterToMasterClient, self.fromMasterClientToMaster))
         reactor.listenTCP(self.config.port,
                         TransportMasterFactory(self.config.homedir,
@@ -79,8 +81,11 @@ class ServerThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        reactor.listenTCP(self.ssport, TransportSServerFactory(fromSServerToServer, fromServerToSServer))
-        reactor.listenTCP(self.port, TransportServerFactory(self.commands, self.homedir, fromSServerToServer, fromServerToSServer))
+        reactor.listenTCP(self.ssport, 
+                            TransportSServerFactory(self.fromSServerToServer, self.fromServerToSServer))
+        reactor.listenTCP(self.port, 
+                            TransportServerFactory(self.commands, self.homedir, 
+                                                    self.fromSServerToServer, self.fromServerToSServer))
 
         
 if __name__ == "__main__":
@@ -108,7 +113,7 @@ if __name__ == "__main__":
     sleep(1)
     # create and start ground stations
     groundstations = []
-    for i in range(NSIZE+1):
+    for i in range(NSIZE):
         gsconfig = copy.deepcopy(config.groundstation)
         gsconfig.port = gsconfig.port + i
         print(gsconfig)
@@ -117,7 +122,7 @@ if __name__ == "__main__":
         groundstations.append(groundstation)
     sleep(1)
     # create and start master
-    master = MasterThread(config.master)
+    master = MasterThread(config)
     master.start()
     sleep(1)
     workers = []
@@ -127,7 +132,7 @@ if __name__ == "__main__":
         wconfig.address = i
         wconfig.port = wconfig.port + i
         gsconfig = copy.deepcopy(config.groundstation)
-        gsconfig.port = gsconfig.port + i + 1
+        gsconfig.port = gsconfig.port + i
         worker = WorkerThread(config.master, gsconfig, wconfig)
         worker.start()
         workers.append(worker)

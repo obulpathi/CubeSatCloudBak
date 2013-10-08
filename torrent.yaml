@@ -8,6 +8,7 @@ commands:
 server:
     address: localhost
     port: 4000
+    ssport: 8004
     homedir: ~/cloud/data/server/
 
 groundstation:
@@ -17,7 +18,6 @@ groundstation:
 master:
     address: localhost
     port: 8000
-    ssport: 8004
     homedir: ~/cloud/data/master/
     
 worker:
