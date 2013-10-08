@@ -17,6 +17,7 @@ groundstation:
 master:
     address: localhost
     port: 8000
+    ssport: 8004
     homedir: ~/cloud/data/master/
     
 worker:

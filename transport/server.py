@@ -8,12 +8,13 @@ from threading import Lock
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet import protocol
+from twisted.protocols.basic import LineReceiver
 
 from cloud import utils
 from cloud.common import *
 from cloud.transport.transport import MyTransport
 
-class TransportServerProtocol(protocol.Protocol):
+class TransportServerProtocol(LineReceiver):
     def __init__(self, factory, homedir):
         self.factory = factory
         self.homedir = homedir
@@ -22,33 +23,35 @@ class TransportServerProtocol(protocol.Protocol):
         self.mutexsp = Lock()
         self.mytransport = MyTransport(self, self.name)
 
-    # received data
-    def dataReceived(self, fragment):
-        self.mytransport.dataReceived(fragment)
-
-    # received a packet
-    def packetReceived(self, packet):
+    def lineReceived(self, line):
         self.mutexpr.acquire()
-        log.msg(packet)
-        if packet.flags == REGISTER:
+        print(line)
+        fields = line.split(":")
+        command = fields[0]
+        if command == "GET_MISSION":
+            self.getMission()
+        elif command == REGISTER:
             if packet.source == "GroundStation":
                 self.registerGroundStation(packet)
             else:
                 self.registerCubeSat(packet)
-        elif packet.flags == UNREGISTER:
+        elif command == UNREGISTER:
             self.unregister(packet)
-        elif packet.flags == GET_MISSION:
+        elif command == GET_MISSION:
             self.getMission(packet.sender)
-        elif packet.flags == CHUNK or packet.flags == "CHUNK":
+        elif command == CHUNK or command == "CHUNK":
             self.receivedChunk(packet.payload)
-        elif packet.flags == "METADATA":
-            self.factory.receivedMetadata(packet.payload)
-        elif packet.flags == "COMPLETED_MISSION":
+        elif command == "METADATA":
+            pass
+            #self.factory.receivedMetadata(packet.payload)
+        elif command == "COMPLETED_MISSION":
             self.factory.finishedMission(packet.payload)
-        elif packet.flags == "MISSION":
+        elif command == "MISSION":
             self.finishedMission(packet.payload)
         else:
-            log.msg("Received unkown packet: %s", str(packet))
+            log.msg("Received unkown packet: %s", line)
+            print(line)
+            utils.banner("LINE")
         self.mutexpr.release()
         
     # send a packet, if needed using multiple fragments
@@ -103,14 +106,19 @@ class TransportServerProtocol(protocol.Protocol):
         log.msg(packet)
         self.sendPacket(packetstring)
                 
-    # get mission to ground station: REMOVE THIS >>>>>>>>>>>>>>>>>>>>>>>>>>>..
-    def getMission(self, receiver):
+    def getMission(self):
+        print("IN GET_MISSION ############################")
         mission = self.factory.getMission()
+        data = "MISSION:" + mission.tostr()
+        print(data)
+        self.sendLine(data)
+        """
         packet = Packet(self.factory.address, receiver, self.factory.address, "Master", \
                         MISSION, mission, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         log.msg(packet)
         self.sendPacket(packetstring)
+        """
         
 # Server factory
 class TransportServerFactory(protocol.Factory):

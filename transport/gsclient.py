@@ -6,29 +6,44 @@ from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
+from twisted.protocols.basic import LineReceiver
 
 from cloud.common import *
 from cloud.transport.transport import MyTransport
             
-class TransportGSClientProtocol(protocol.Protocol):
+class TransportGSClientProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
         self.address = "GroundStation"
+        self.metadata = None
+        self.mode = "LINE"
         self.waiter = WaitForData(self.factory.fromGSServerToGSClient, self.getData)
         self.waiter.start()
         self.state = UNREGISTERED # whats the begin state?
         self.mytransport = MyTransport(self, "GSClient")
         
-    def getData(self, packetstring):
-        self.transport.write(packetstring)
+    def getData(self, data):
+        if self.mode == "LINE":
+            self.metadata = data
+            self.sendLine(data)
+            self.mode = "RAW"
+        else:
+            self.transport.write(data)
+            self.mode = "LINE"
         
     def connectionMade(self):
         log.msg("Connection made")
-        self.register()
+        # self.register()
 
+    def lineReceived(self, line):
+        self.uplinkToCubeSat(line)
+        print("###################### GSClient: ", line)
+        
+    """
     # received data
     def dataReceived(self, fragment):
         self.mytransport.dataReceived(fragment)
+    """
                 
     # received a packet
     def packetReceived(self, packet):
@@ -62,9 +77,9 @@ class TransportGSClientProtocol(protocol.Protocol):
         self.transport.loseConnection()
     
     def uplinkToCubeSat(self, packetstring):
-        log.msg("Groung station: Uplinking to CubeSat >>>>>>>>>>>>>>>>>>")
-        length = len(packetstring)
-        packetstring = str(length).zfill(LHSIZE) + packetstring
+        #log.msg("Groung station: Uplinking to CubeSat >>>>>>>>>>>>>>>>>>")
+        #length = len(packetstring)
+        #packetstring = str(length).zfill(LHSIZE) + packetstring
         self.factory.fromGSClientToGSServer.put(packetstring)
 
 

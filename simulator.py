@@ -71,12 +71,17 @@ class GroundStationThread(threading.Thread):
 class ServerThread(threading.Thread):
     def __init__(self, config, commands):
         self.port = config.port
+        self.ssport = config.ssport
         self.homedir = config.homedir
         self.commands = commands
+        self.fromSServerToServer = Queue.Queue()
+        self.fromServerToSServer = Queue.Queue()
         threading.Thread.__init__(self)
 
     def run(self):
-        reactor.listenTCP(self.port, TransportServerFactory(self.commands, self.homedir))
+        reactor.listenTCP(self.ssport, TransportSServerFactory(fromSServerToServer, fromServerToSServer))
+        reactor.listenTCP(self.port, TransportServerFactory(self.commands, self.homedir, fromSServerToServer, fromServerToSServer))
+
         
 if __name__ == "__main__":
     import yaml

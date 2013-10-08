@@ -91,6 +91,28 @@ def stichChunksIntoImage(directory, filename, metadata):
     result.save(filename)
     return
 
+def serializeMetadata(metadata):
+    data = metadata.filename
+    data = data +  ":" + height
+    data = data + ":" + width
+    data = data + ":" + directory
+    chunkMap = metadata["chunkMap"]
+    numOfWorkers = len(chunkMap)
+    data = data +  ":" + str(numOfWorkers)
+    for worker, chunklist in chunkMap.iteritems():
+        data = data +  ":" + str(worker)
+        numOfChunks = len(chunklist)
+        data = data +  ":" + str(numOfChunks)
+        for chunk in chunklist:
+            data = data +  ":" + chunk.name
+            data = data +  ":" + chunk.size
+            data = data +  ":" + chunk.box
+            data = data +  ":" + chunk.box
+    return data
+
+def deserializeMetadata(data):
+    pass
+            
 def banner(msg):
     print("#############################################################")
     print(msg)

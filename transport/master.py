@@ -153,22 +153,28 @@ class TransportMasterFactory(protocol.Factory):
 
     def getData(self, packet):
         log.msg(packet)
-        if packet.flags == "REGISTER":
+        fields = packet.split(":")
+        command = fields[0]
+        if command == "REGISTER":
             self.registerMasterClient()
-        elif packet.flags == "MISSION":
-            self.gotMission(packet.payload)
+        elif command == "MISSION":
+            mission = Mission()
+            mission.operation = fields[1]
+            mission.filename = fields[2]
+            mission.uuid = fields[3]
+            self.gotMission(mission)
         else:
             log.msg("Received unknown packet from Master Client: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
             log.msg(packet)
 
-    def sendData(self, flags, payload):
-        packet = Packet("Master", "Receiver",
-                        "Master", "Server", 
-                        flags, payload, HEADERS_SIZE)
-        self.fromMasterToMasterClient.put(packet)
+    def sendData(self, data):
+        utils.banner("MASTER TO MASTER CLIENT ################################")
+        self.fromMasterToMasterClient.put(data)
     
     def sendMetadata(self, metadata):
-        self.sendData("METADATA", metadata)
+        print(metadata)
+        utils.banner("METADATA")
+        self.sendData("METADATA")
         log.msg("Sent metadata")
                             
     def buildProtocol(self, addr):
@@ -183,10 +189,14 @@ class TransportMasterFactory(protocol.Factory):
     def getMission(self):
         utils.banner("Requesting for NEW_MISSION")
         log.msg("Requesting for new mission")
+        data = "GET_MISSION"
+        self.fromMasterToMasterClient.put(data)
+        """
         packet = Packet("Master", "Receiver",
                         "Master", "Server", 
                         GET_MISSION, None, HEADERS_SIZE)
         self.fromMasterToMasterClient.put(packet)
+        """
 
     def gotMission(self, mission):
         if mission:
@@ -403,10 +413,11 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("Store Mission Accomplished")
         # send the metadata
         self.fileMap[self.metadata["filename"]] = self.metadata
-        self.sendMetadata(self.metadata)
+        # FIX THIS >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>..
+        # self.sendMetadata(self.metadata)
         utils.saveMetadata(self.metadata, self.metadir)
-        task.deferLater(reactor, 0.1, self.missionComplete, self.mission)
-        # self.missionComplete(self.mission)
+        #task.deferLater(reactor, 0.1, self.missionComplete, self.mission)
+        self.missionComplete(self.mission)
 
     def processMissionComplete(self, mission):
         log.msg("Process Mission Accomplished")
@@ -438,5 +449,5 @@ class TransportMasterFactory(protocol.Factory):
     # send a notification that current mission is complete and fetch next    
     def missionComplete(self, mission):
         print("MISSION COMPLETE")
-        self.sendData("MISSION", mission)
+        self.sendData("GET_MISSION:" + mission.tostr())
         self.mission = None

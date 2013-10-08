@@ -32,7 +32,6 @@ class TransportWorkerProtocol(LineReceiver):
 
     def getData(self, data):
         # strip off the length header
-        data = data[LHSIZE:]
         self.sendPacket(data)
 
     def connectionMade(self):
@@ -175,18 +174,23 @@ class TransportWorkerProtocol(LineReceiver):
         log.msg(filename)
         data = open(filename).read()
         log.msg(work)
+        work.payload = str(len(data))
+        metadata = work.tostr()
+        self.forwardToServer(metadata, data)
+        """
         work.payload = data
         packet = Packet(self.address, "Receiver", self.address, "Server", "CHUNK", work, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.forwardToServer(packetstring)
         task.deferLater(reactor, 5.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
+        """
                    
-    def forwardToServer(self, packetstring):
-        length = len(packetstring)
-        packetstring = str(length).zfill(LHSIZE) + packetstring
+    def forwardToServer(self, metadata, data):
+        self.factory.fromWorkerToCSClient.put(metadata)
+        length = len(data)
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
             log.msg("Sending a fragment")
-            self.factory.fromWorkerToCSClient.put(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+            self.factory.fromWorkerToCSClient.put(data[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
             
     def forwardToChild(self, packet):
         self.factory.fromWorkerToCSServer.put(packet)

@@ -173,11 +173,15 @@ class Mission(object):
     def __init__(self):
         pass  
     def __repr__(self):
+        """
         if self.operation == SENSE:
             return "Mission: " + self.operation + ", filename: " + self.filename + ", UUID: " + str(self.uuid) + \
                    ", lat: " + self.lat + ", lon: " + self.lon
         else:
-            return "Mission: " + self.operation + ", filename: " + self.filename + ", UUID: " + str(self.uuid)
+        """
+        return "Mission: " + self.operation + ", filename: " + self.filename + ", UUID: " + str(self.uuid)
+    def tostr(self):
+        return self.operation + ":" + self.filename + ":" + str(self.uuid)
 
 class Metadata(object):
     def __init__(self):

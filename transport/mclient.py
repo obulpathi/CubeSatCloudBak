@@ -6,11 +6,12 @@ from twisted.python import log
 from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
+from twisted.protocols.basic import LineReceiver
 
 from cloud.common import *
 from cloud.transport.transport import MyTransport
 
-class TransportMasterClientProtocol(protocol.Protocol):
+class TransportMasterClientProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
         self.address = None
@@ -20,18 +21,23 @@ class TransportMasterClientProtocol(protocol.Protocol):
         self.mutexsp = Lock()
         self.mytransport = MyTransport(self, "MClient")
 
+    def lineReceived(self, line):
+        self.factory.fromMasterClientToMaster.put(line)
+        
     def getData(self, packet):
         log.msg("MasterClient: Got a packet from Master, sending it to gsserver")
         log.msg(packet)
-        self.sendPacket(pickle.dumps(packet))
+        self.sendLine(packet)
 
     def connectionMade(self):
         task.deferLater(reactor, 2, self.register)
-
+    
+    """
     # received data
     def dataReceived(self, fragment):
         self.mytransport.dataReceived(fragment)
-
+    """
+    
     # received a packet
     def packetReceived(self, packet):
         self.mutexpr.acquire()
@@ -49,8 +55,7 @@ class TransportMasterClientProtocol(protocol.Protocol):
         self.mutexsp.release()
                 
     def register(self):
-        packet = Packet("MasterClient", "Master", "MasterClient", "Master", REGISTER, None, HEADERS_SIZE)
-        self.factory.fromMasterClientToMaster.put(packet)
+        self.factory.fromMasterClientToMaster.put("REGISTER")
         
     def registered(self, packet):
         log.msg("Whoa!!!!!")
