@@ -64,8 +64,8 @@ CS2GSLink = Link(9600, MB, 5, 64)
 CS2CSLink = Link(MBPS, MB, 2, 64)
 
 # chunk sizes
-chunk_x = 100
-chunk_y = 100
+chunk_x = 500
+chunk_y = 500
 
 # missions
 #Mission = namedtuple('Mission', 'mission')
@@ -83,17 +83,24 @@ class Work(object):
         self.filename = filename
         self.payload = payload
     def __repr__(self):
-        return "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename
+        strrepr =  "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename
+        if self.job == "STORE":
+            strrepr = strrepr + ", size: " + str(self.size)
+        return strrepr
     def tostr(self):
         strrepr = str(self.uuid) + ":" + self.job + ":" + self.filename
         if self.payload:
             strrepr = strrepr + ":" + self.payload
+        if self.job == "STORE":
+            strrepr = strrepr + ":" + str(self.size)
         return strrepr
     def fromstr(self, initstr):
         fields = initstr.split(":")
         self.uuid = fields[0]
         self.job = fields[1]
         self.filename = fields[2]
+        if self.job == "STORE":
+            self.size = fields[3]
 
 class Chunk(object):
     def __init__(self, uuid, name, size, box):

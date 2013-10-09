@@ -19,6 +19,7 @@ class TransportMasterProtocol(LineReceiver):
         self.factory = factory
         self.status = IDLE
         self.mode = "LINE"
+        #self.MAX_LENGTH = 64000
         self.mutexpr = Lock()
         self.mutexsp = Lock()
         self.mytransport = MyTransport(self, "Master")
@@ -75,8 +76,6 @@ class TransportMasterProtocol(LineReceiver):
         
     # get work to workers
     def getWork(self, worker, finishedWork = None):
-        # utils.banner("GET WORK")
-        log.msg("GET WORK")
         work, data = self.factory.getWork(worker, finishedWork)
         if not work:
             self.noWork(worker)
@@ -89,7 +88,6 @@ class TransportMasterProtocol(LineReceiver):
         
     # send work
     def sendWork(self, work, data):
-        # utils.banner("WORK")
         metadata = work.tostr()
         self.sendLine("WORK:" + metadata)
         if work.job == "STORE":
@@ -97,7 +95,9 @@ class TransportMasterProtocol(LineReceiver):
     
     def sendData(self, data):
         self.setRawMode()
-        self.transport.write(data)
+        length = len(data)
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            self.transport.write(data[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
         self.setLineMode()
 
 # Master factory
@@ -254,6 +254,7 @@ class TransportMasterFactory(protocol.Factory):
                 chunk.status = "ASSIGNED"
                 data = open(directory + chunk.name).read()
                 work = Work(chunk.uuid, "STORE", chunk.name, None)
+                work.size = chunk.size
                 log.msg(chunk)
                 return work, data
         # no work: set a callback to check if mission is complete and return
@@ -379,7 +380,7 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("Store Mission Accomplished")
         # send the metadata
         self.fileMap[self.metadata.filename] = self.metadata
-        self.sendMetadata(self.metadata)
+        # self.sendMetadata(self.metadata)
         # self.metadata.save(self.metadir)
         task.deferLater(reactor, 1, self.missionComplete, self.mission)
         #self.missionComplete(self.mission)

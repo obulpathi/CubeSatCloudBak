@@ -22,12 +22,17 @@ class TransportWorkerProtocol(LineReceiver):
         self.factory = factory
         self.homedir = os.path.expanduser(homedir)
         self.address = "Worker"
+        #self.MAX_LENGTH = 64000
         self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getData)
         self.cswaiter.start()
         self.ccwaiter.start()
         self.mutexpr = Lock()
         self.mutexsp = Lock()
+        self.fragments = None
+        self.fragmentsLength = 0
+        self.packetLength = 0
+        self.work = None
         self.mytransport = MyTransport(self, "Worker")
 
     def getData(self, data):
@@ -47,19 +52,35 @@ class TransportWorkerProtocol(LineReceiver):
             self.noWork()
         elif command == "WORK":
             work = Work(fields[1], fields[2], fields[3], None)
-            if work.job == "PROCESS":
-                work.payload = fields[4]
-            self.gotWork(work)
             if work.job == "STORE":
+                work.size = int(fields[4])
+                self.fragments = None
+                self.fragmentsLength = 0
+                self.packetLength = work.size
+                self.work = work
                 self.setRawMode()
+                return            
+            elif work.job == "PROCESS":
+                work.payload = fields[4]
+            else:
+                pass
+            self.gotWork(work)
         else:
             print(line)
 
     def rawDataReceived(self, data):
-        # utils.banner("RAW_DATA")
-        self.setLineMode()
-        self.work.payload = data
-        self.gotWork(self.work)
+        # buffer the the fragments
+        if not self.fragments:
+            self.fragments = data
+            self.fragmentsLength = len(self.fragments)
+        else:
+            self.fragments = self.fragments + data
+            self.fragmentsLength = self.fragmentsLength + len(data)
+        # check if we received all the fragments
+        if self.fragmentsLength == self.packetLength:
+            self.setLineMode()
+            self.work.payload = self.fragments
+            self.gotWork(self.work)
                             
     # receive packet    
     def packetReceived(self, packet):
@@ -126,10 +147,7 @@ class TransportWorkerProtocol(LineReceiver):
     
     def gotWork(self, work):
         if work.job == "STORE":
-            if work.payload:
-                self.store(work)
-            else:
-                self.work = work
+            self.store(work)
         elif work.job == "PROCESS":
             self.process(work)
         elif work.job == "DOWNLINK":
@@ -146,7 +164,8 @@ class TransportWorkerProtocol(LineReceiver):
         chunk = open(self.homedir + work.filename, "w")
         chunk.write(work.payload)
         chunk.close()
-        self.getWork(Work(work.uuid, work.job, work.filename, None))
+        work.payload = None
+        self.getWork(work)
     
     def process(self, work):
         log.msg(work)
