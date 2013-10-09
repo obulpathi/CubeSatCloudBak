@@ -39,6 +39,8 @@ def read(filename):
 def write(filename, data):
     image = open(filename, "w")
     image.write(data)
+    image.flush()
+    os.fsync(image.fileno())
     image.close()
 
 def process(filename):

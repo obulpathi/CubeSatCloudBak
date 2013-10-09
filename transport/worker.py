@@ -121,7 +121,6 @@ class TransportWorkerProtocol(LineReceiver):
         #self.sendPacket(packetstring)
         
     def registered(self, address):
-        # utils.banner("REGISTERED")
         self.address = address
         self.homedir = self.homedir + str(self.address) + "/"
         try:

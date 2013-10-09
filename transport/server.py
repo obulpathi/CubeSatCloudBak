@@ -28,7 +28,6 @@ class TransportServerProtocol(LineReceiver):
         self.mytransport = MyTransport(self, self.name)
 
     def lineReceived(self, line):
-        utils.banner("SERVER LINE DATA")
         fields = line.split(":")
         self.work = Work(fields[1], fields[2], fields[3], None)
         self.work.size = fields[4]
@@ -39,7 +38,6 @@ class TransportServerProtocol(LineReceiver):
         self.setRawMode()
 
     def rawDataReceived(self, data):
-        utils.banner("SERVER RAW DATA")
         # buffer the the fragments
         if not self.fragments:
             self.fragments = data
@@ -80,11 +78,9 @@ class TransportServerProtocol(LineReceiver):
         else:
             log.msg("Received unkown packet: %s", line)
             print(line)
-            utils.banner("LINE")
         self.mutexpr.release()
     
     def rawDataReceived(self, data):
-        utils.banner("RAW_DATA")
         self.receivedChunk(data)
         self.setLineMode()
     """
@@ -123,7 +119,6 @@ class TransportServerProtocol(LineReceiver):
 
     # received a chunk
     def receivedChunk(self, work):
-        utils.banner("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
         log.msg(work.filename)
         filename = self.homedir + work.filename
         if not os.path.exists(os.path.split(filename)[0]):
@@ -219,7 +214,6 @@ class TransportServerFactory(protocol.Factory):
         else:
             log.msg("Received unkown packet: %s", line)
             print(line)
-            utils.banner("LINE")
                 
     def sendMission(self):
         mission = None

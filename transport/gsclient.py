@@ -28,7 +28,6 @@ class TransportGSClientProtocol(LineReceiver):
         
     def getData(self, data):
         if self.mode == "LINE":
-            utils.banner("GS CLIENT LINE DATA")
             fields = data.split(":")
             self.work = Work(fields[1], fields[2], fields[3], None)
             self.work.size = fields[4]
@@ -39,7 +38,6 @@ class TransportGSClientProtocol(LineReceiver):
             self.mode = "RAW"
             self.setRawMode()
         else:
-            utils.banner("GS CLIENT RAW DATA")
             self.transport.write(data)
             # buffer the the fragments
             if not self.fragments:

@@ -25,7 +25,6 @@ class TransportCSClientProtocol(LineReceiver):
 
     def getData(self, data):
         if self.mode == "LINE":
-            utils.banner("CS CLIENT LINE DATA")
             fields = data.split(":")
             self.work = Work(fields[1], fields[2], fields[3], None)
             self.work.size = fields[4]
@@ -37,7 +36,6 @@ class TransportCSClientProtocol(LineReceiver):
             self.mode = "RAW"
             self.setRawMode()
         else:
-            utils.banner("CS CLIENT RAW DATA")
             self.transport.write(data)
             # buffer the the fragments
             if not self.fragments:
@@ -47,12 +45,9 @@ class TransportCSClientProtocol(LineReceiver):
                 self.fragments = self.fragments + data
                 self.fragmentsLength = self.fragmentsLength + len(data)
             # check if we received all the fragments
-            print "LENGTHS: ", self.fragmentsLength, self.packetLength
             if self.fragmentsLength == self.packetLength:
-                utils.banner("Resetting ###################### RESETTING")
                 self.mode = "LINE"
                 self.setLineMode()
-            print "LENGTHS: ", self.fragmentsLength, self.packetLength
 
     def connectionMade(self):
         log.msg("Worker connection made")

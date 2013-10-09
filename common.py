@@ -64,8 +64,8 @@ CS2GSLink = Link(9600, MB, 5, 64)
 CS2CSLink = Link(MBPS, MB, 2, 64)
 
 # chunk sizes
-chunk_x = 500
-chunk_y = 500
+chunk_x = 1000
+chunk_y = 1000
 
 # missions
 #Mission = namedtuple('Mission', 'mission')

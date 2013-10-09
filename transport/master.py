@@ -53,7 +53,7 @@ class TransportMasterProtocol(LineReceiver):
             self.transmitChunk(packet.source)
         else:
             log.msg(packet)
-            utils.banner("Unknown stuff")
+            log.msg("Unknown stuff")
         self.mutexpr.release()
 
     # send a packet, if needed using multiple fragments
@@ -144,10 +144,9 @@ class TransportMasterFactory(protocol.Factory):
         self.fromMasterToMasterClient.put(data)
     
     def sendMetadata(self, metadata):
-        utils.banner("METADATA")
         data = "METADATA:" + metadata.tostr()
         self.sendData(data)
-        log.msg("Sent metadata")
+        # log.msg("Sent metadata")
 
     def buildProtocol(self, addr):
         transport = TransportMasterProtocol(self)
@@ -159,7 +158,6 @@ class TransportMasterFactory(protocol.Factory):
         self.getMission()
             
     def getMission(self):
-        # utils.banner("Requesting for NEW_MISSION")
         log.msg("Requesting for new mission")
         data = "GET_MISSION"
         self.fromMasterToMasterClient.put(data)

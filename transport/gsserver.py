@@ -23,7 +23,6 @@ class TransportGSServerProtocol(LineReceiver):
         self.sendLine(line)
     
     def lineReceived(self, line):
-        utils.banner("GS SERVER LINE DATA")
         fields = line.split(":")
         self.work = Work(fields[1], fields[2], fields[3], None)
         self.work.size = fields[4]
@@ -35,7 +34,6 @@ class TransportGSServerProtocol(LineReceiver):
         self.setRawMode()
 
     def rawDataReceived(self, data):
-        utils.banner("GS SERVER RAW DATA")
         self.factory.fromGSServerToGSClient.put(data)
         # buffer the the fragments
         if not self.fragments:
