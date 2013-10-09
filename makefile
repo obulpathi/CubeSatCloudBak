@@ -15,7 +15,7 @@ bootstrap:
 	mkdir ~/cloud/data/
 
 limit:
-	echo "set netowrk speed limits"
+	sudo tc qdisc change dev eth0 root netem rate 1mbit delay 5ms 2ms distribution normal loss 0.3% 25%
 
 install:
 	echo "Install required software"
