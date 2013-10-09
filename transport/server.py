@@ -20,10 +20,41 @@ class TransportServerProtocol(LineReceiver):
         self.homedir = homedir
         self.name = "Server"
         self.mode = "LINE"
+        self.work = None
+        self.fragments = None
+        self.fragmentsLength = 0
         self.mutexpr = Lock()
         self.mutexsp = Lock()
         self.mytransport = MyTransport(self, self.name)
 
+    def lineReceived(self, line):
+        utils.banner("SERVER LINE DATA")
+        fields = line.split(":")
+        self.work = Work(fields[1], fields[2], fields[3], None)
+        self.work.size = fields[4]
+        self.packetLength = int(self.work.size)
+        self.fragments = None
+        self.fragmentsLength = 0
+        self.mode = "RAW"
+        self.setRawMode()
+
+    def rawDataReceived(self, data):
+        utils.banner("SERVER RAW DATA")
+        # buffer the the fragments
+        if not self.fragments:
+            self.fragments = data
+            self.fragmentsLength = len(self.fragments)
+        else:
+            self.fragments = self.fragments + data
+            self.fragmentsLength = self.fragmentsLength + len(data)
+        # check if we received all the fragments
+        if self.fragmentsLength == self.packetLength:
+            self.work.payload = self.fragments
+            self.mode = "LINE"
+            self.setLineMode()
+            self.receivedChunk(self.work)
+
+    """
     def lineReceived(self, line):
         self.mutexpr.acquire()
         print(line)
@@ -56,7 +87,7 @@ class TransportServerProtocol(LineReceiver):
         utils.banner("RAW_DATA")
         self.receivedChunk(data)
         self.setLineMode()
-            
+    """
     # send a packet, if needed using multiple fragments
     def sendPacket(self, packetstring):
         self.mutexsp.acquire()
@@ -91,13 +122,14 @@ class TransportServerProtocol(LineReceiver):
         self.sendPacket(packetstring)
 
     # received a chunk
-    def receivedChunk(self, data):
-        log.msg(self.chunk.name)
-        filename = self.homedir + self.chunk.name
+    def receivedChunk(self, work):
+        utils.banner("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        log.msg(work.filename)
+        filename = self.homedir + work.filename
         if not os.path.exists(os.path.split(filename)[0]):
             os.mkdir(os.path.split(filename)[0])
         handler = open(filename, "w")
-        handler.write(data)
+        handler.write(work.payload)
         handler.close()
 
     def finishedMission(self, mission):

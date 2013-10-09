@@ -406,7 +406,7 @@ class TransportMasterFactory(protocol.Factory):
     def downlinkMissionComplete(self, mission):
         log.msg("Downlink Mission Accomplished")
         self.fileMap[self.metadata.filename] = self.metadata
-        self.sendMetadata(self.metadata)
+        task.deferLater(reactor, 10, self.sendMetadata, self.metadata)
         self.metadata.save(self.metadir)
         task.deferLater(reactor, 1, self.missionComplete, mission)
 
