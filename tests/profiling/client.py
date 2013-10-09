@@ -1,82 +1,93 @@
 import time
 import math
-import pickle
 
 from twisted.internet import reactor
 from twisted.internet import protocol
+from twisted.protocols.basic import LineReceiver
 
 from cloud.common import *
-from transport import MyTransport
 
-class Client(protocol.Protocol):
+class Client(LineReceiver):
     def __init__(self):
-        self.mutexpr = Lock()
-        self.mutexsp = Lock()
+        self.mutex = Lock()
         self.name = "Client"
         self.times = []
         self.sizes = []
-        self.mytransport = MyTransport(self, self.name)
+        self.setLineMode()
+        self.chunkname = ""
+        self.fragments = None
+        self.fragmentsLength = 0
+        self.packetLength = 0
         
     def connectionMade(self):
         print("Client connection made")
         self.requestList()
     
     def connectionLost(self, reason):
-        print "connection lost"
-        
-    def dataReceived(self, fragment):
-        self.mytransport.dataReceived(fragment)
-        
-    # send a packet, if needed using multiple fragments
-    def sendPacket(self, packetstring):
-        self.mutexsp.acquire()
-        length = len(packetstring)
-        packetstring = str(length).zfill(LHSIZE) + packetstring
-        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
-            self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
-        self.mutexsp.release()
-        
-    # received a packet
-    def packetReceived(self, packet):
-        if packet[:4] == "LIST":
-            chunks = pickle.loads(packet[4:])
-            self.gotList(chunks)
-        elif packet[:5] == "CHUNK":
-            self.gotChunk(packet[5:])
+        print("connection lost")
+
+    def lineReceived(self, line):
+        self.mutex.acquire()
+        fields = line.split(":")
+        command = fields[0]
+        if command == "LIST":
+            self.gotList(fields[1:])
+        elif command == "CHUNK":
+            self.setRawMode()
+            self.gotChunkdata(fields[1:])
         else:
-            print("DHSGDJHGSDJSD^&%$#^&@#&^@%#&^#&#@&$&")
+            print(line)
+        self.mutex.release()
+
+    def rawDataReceived(self, data):
+        self.mutex.acquire()
+        # buffer the the fragments
+        if not self.fragments:
+            self.fragments = data
+            self.fragmentsLength = len(self.fragments)
+        else:
+            self.fragments = self.fragments + data
+            self.fragmentsLength = self.fragmentsLength + len(data)
+        # check if we received all the fragments
+        if self.fragmentsLength == self.packetLength:
+            self.setLineMode()
+            self.gotChunk(self.fragments)
+        self.mutex.release()
     
     def requestList(self):
         self.t1 = time.time()
-        packet = "LIST"
-        self.sendPacket(packet)
+        data = "LIST"
+        self.sendLine(data)
     
     def gotList(self, chunks):
         self.t2 = time.time()
         self.chunks = chunks
         chunk = self.chunks[0]
-        self.chunks = self.chunks[1:]
-        self.requestChunk(chunk)
+        self.requestChunk()
         
-    def requestChunk(self, chunk):
+    def requestChunk(self):
         self.time = time.time()
-        packet = "CHUNK" + str(chunk)
-        self.sendPacket(packet)
+        chunk = self.chunks[0]
+        self.chunks = self.chunks[1:]
+        packet = "CHUNK:" + str(chunk)
+        self.sendLine(packet)
     
+    def gotChunkdata(self, fields):
+        self.chunkname = fields[0]
+        self.packetLength = int(fields[1])
+        self.fragments = None
+        self.fragmentsLength = 0
+
     def gotChunk(self, data):
         self.times.append(time.time() - self.time)
-        self.sizes.append(len(data))
-        length = int(data[:2])
-        chunkname = data[2:length+2]
-        data = data[2+length:]
-        data = pickle.loads(data)
+        self.sizes.append(self.packetLength)
+        length = self.packetLength
+        chunkname = self.chunkname
         chunk = open("output/" + chunkname, "w")
         chunk.write(data)
         chunk.close()
         if self.chunks:
-            chunk = self.chunks[0]
-            self.chunks = self.chunks[1:]
-            self.requestChunk(chunk)
+            self.requestChunk()
         else:
             print("Finished downlinking chunks")
             self.printStats()
@@ -109,9 +120,8 @@ class ClientFactory(protocol.ClientFactory):
 
 # this connects the protocol to a server runing on port 8000
 def main():
-    f = ClientFactory()
-    reactor.connectTCP("localhost", 8000, f)
-    # reactor.connectTCP("10.227.80.45", 8000, f)
+    reactor.connectTCP("localhost", 8000, ClientFactory())
+    # reactor.connectTCP("10.227.80.45", 8000, ClientFactory())
     reactor.run()
 
 # run main
