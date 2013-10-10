@@ -1,4 +1,4 @@
-.PHONY: clean chunks
+.PHONY: clean chunks profile
 
 clean:
 	rm -rf output/*
@@ -7,3 +7,6 @@ clean:
 
 chunks:
 	python generateChunks.py
+
+profile:
+	python profile.py
