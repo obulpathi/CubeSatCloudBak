@@ -10,3 +10,12 @@ chunks:
 
 profile:
 	python profile.py
+
+profileread:
+	python profileread.py
+
+profilewrite:
+	python profilewrite.py
+
+profileprocess:
+	python profileprocess.py
