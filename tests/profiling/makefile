@@ -8,6 +8,9 @@ clean:
 chunks:
 	python generateChunks.py
 
+subchunks:
+	python generateSubchunks.py
+
 profile:
 	python profile.py
 

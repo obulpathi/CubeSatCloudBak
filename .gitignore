@@ -12,3 +12,4 @@ tests/profiling/results/
 tests/profiling/output/
 tests/profiling/chunks/
 tests/profiling/splits/
+tests/profiling/subchunks/
