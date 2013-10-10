@@ -15,17 +15,20 @@ bootstrap:
 	mkdir ~/cloud/data/
 
 spacelink:
-	sudo tc qdisc add dev eth0 root netem rate 1mbit delay 5ms 2ms distribution normal loss 0.3% 25%
+	sudo tc qdisc add dev eth0 root netem rate 1mbit delay 1ms 10us distribution normal loss 0.3% 25%
 
 groundlink:
-	sudo tc qdisc add dev eth0 root netem rate 10kbit delay 8ms 2ms distribution normal loss 1% 25%
+	sudo tc qdisc add dev eth0 root netem rate 9600bit delay 2ms 200us distribution normal loss 0.3% 25%
 
 resetlinks:
 	sudo tc qdisc del dev eth0 root
-	
+
+showlinks:
+	sudo tc -s qdisc ls dev eth0
+
 install:
 	echo "Install required software"
-	sudo apt-get install python-twisted cython python-dev matplotlib numpy scipy python-pip
+	sudo apt-get install python-twisted cython python-dev python-matplotlib python-numpy python-scipy python-pip
 	sudo pip install -U scikit-image
 	cd /usr/local/lib/python2.7/dist-packages
-	sudo chown -R obulpathi:obulpathi *
+	sudo chown -R pi:pi *

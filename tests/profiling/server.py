@@ -26,13 +26,6 @@ class Server(LineReceiver):
             self.sendChunk(fields[1])
         else:
             print line
-
-    def sendData(self, data):
-        self.setRawMode()
-        length = len(data)
-        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
-            self.transport.write(data[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
-        self.setLineMode()
                         
     def sendData(self, data):
         self.setRawMode()

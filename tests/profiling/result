@@ -1,20 +1,21 @@
-profiling # python read.py
-Image: 1.jpg   Time:  3.00407409668e-05
-Image: 2.jpg   Time:  0.000771045684814
-profiling # python write.py
-Image: 1.jpg   Time:  0.000163793563843
-Image: 2.jpg   Time:  0.00203204154968
-profiling # python process.py 
-Image: 1.jpg   Time:  0.00706815719604
-Image: 2.jpg   Time:  0.423929929733
-#######################################
-profiling # python read.py                     
-Image: 1.jpg   Time:  0.000705003738403
-Image: 2.jpg   Time:  0.00932288169861
-profiling # python write.py                    
-Image: 1.jpg   Time:  0.00209999084473
-Image: 2.jpg   Time:  0.0410630702972
-profiling # python process.py                  
-Image: 1.jpg   Time:  0.0945889949799
-Image: 2.jpg   Time:  5.86034703255
-
+profiling # python profile.py 
+Average read time: 0.0107606158537
+Total read time: 0.182930469513
+Number of chunks read: 17
+#####################################################
+Average write time: 0.502168459051
+Total write time: 8.53686380386
+Number of chunks written: 17
+#####################################################
+Average write time: 0.00371125165154
+Total write time: 0.0630912780762
+Number of chunks written: 17
+#####################################################
+profiling # python client.py 
+Client connection made
+Finished downlinking chunks
+RTT:  0.037841796875
+Average time:  4.42548138955
+Average size:  175122
+Total time:  75.2331836224 Chunks#  17
+#####################################################

@@ -80,6 +80,7 @@ class Client(LineReceiver):
 
     def gotChunk(self, data):
         self.times.append(time.time() - self.time)
+        print self.times[-1]
         self.sizes.append(self.packetLength)
         length = self.packetLength
         chunkname = self.chunkname
@@ -120,8 +121,8 @@ class ClientFactory(protocol.ClientFactory):
 
 # this connects the protocol to a server runing on port 8000
 def main():
-    reactor.connectTCP("localhost", 8000, ClientFactory())
-    # reactor.connectTCP("10.227.80.45", 8000, ClientFactory())
+    #reactor.connectTCP("localhost", 8000, ClientFactory())
+    reactor.connectTCP("10.227.80.45", 8000, ClientFactory())
     reactor.run()
 
 # run main

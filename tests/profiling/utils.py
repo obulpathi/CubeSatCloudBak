@@ -15,8 +15,6 @@ from skimage import data
 from skimage.exposure import rescale_intensity
 import Image
 
-WIDTH = 500
-HEIGHT = 500
 Box = namedtuple('Box', 'left top right bottom')
 class Chunk(object):
     def __init__(self, uuid, name, size, box):
@@ -39,8 +37,8 @@ def read(filename):
 def write(filename, data):
     image = open(filename, "w")
     image.write(data)
-    image.flush()
-    os.fsync(image.fileno())
+    # image.flush()
+    # os.fsync(image.fileno())
     image.close()
 
 def process(filename):
@@ -57,7 +55,7 @@ def process(filename):
     rec = reconstruction(seed, mask, method='dilation')
 
 # split the remote sensing data into chunks
-def splitImageIntoChunks(filename, directory):
+def splitImageIntoChunks(filename, directory, WIDTH = 500, HEIGHT = 500):
     metadata = {}
     chunks = {}
     # check if the file exists
@@ -67,12 +65,7 @@ def splitImageIntoChunks(filename, directory):
     image = Image.open(filename)
     width = image.size[0]
     height = image.size[1]
-    prefix = os.path.basename(filename).split(".")[0] + "/"
-    # create data subdirectory for this file
-    try:
-        os.mkdir(directory + prefix)
-    except:
-        pass
+    prefix = os.path.basename(filename).split(".")[0]
     count = 0 # chunk counter
     for y in range(0, int(math.ceil(float(height)/HEIGHT))):
         for x in range(0, int(math.ceil(float(width)/WIDTH))):
