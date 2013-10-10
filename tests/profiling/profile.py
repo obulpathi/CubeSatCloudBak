@@ -5,7 +5,7 @@ import utils
 # profile for read
 def profileRead(chunks):
     readtimes = []
-    readtimes = []
+    chunksizes = []
     for chunk in chunks:
         t1 = time.time()
         data = utils.read("chunks/" + chunk)
