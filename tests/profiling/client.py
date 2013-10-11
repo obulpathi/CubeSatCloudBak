@@ -62,6 +62,7 @@ class Client(LineReceiver):
     def gotList(self, chunks):
         self.t2 = time.time()
         self.chunks = chunks
+        print self.chunks
         chunk = self.chunks[0]
         self.requestChunk()
         
@@ -123,6 +124,7 @@ class ClientFactory(protocol.ClientFactory):
 def main():
     #reactor.connectTCP("localhost", 8000, ClientFactory())
     reactor.connectTCP("10.227.80.45", 8000, ClientFactory())
+    #reactor.connectTCP("10.227.80.88", 8000, ClientFactory())
     reactor.run()
 
 # run main
