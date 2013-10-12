@@ -1,3 +1,4 @@
+import math
 import pickle
 from threading import Lock
 
@@ -13,18 +14,22 @@ from cloud.common import *
 class TransportCSClientProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
-        self.id = None
+        self.address = None
         self.mode = "LINE"
+        self.line = None
         self.work = None
         self.fragments = None
         self.fragmentsLength = 0
         self.packetLength = 0
         self.waiter = WaitForData(self.factory.fromWorkerToCSClient, self.getData)
         self.waiter.start()
-        self.mutexsp = Lock()
+        self.mutex = Lock()
+        self.setLineMode()
 
     def getData(self, data):
         if self.mode == "LINE":
+            # print(data)
+            self.line = data
             fields = data.split(":")
             self.work = Work(fields[1], fields[2], fields[3], None)
             self.work.size = fields[4]
@@ -32,11 +37,8 @@ class TransportCSClientProtocol(LineReceiver):
             self.packetLength = int(self.work.size)
             self.fragments = None
             self.fragmentsLength = 0
-            self.sendLine(data)
             self.mode = "RAW"
-            self.setRawMode()
         else:
-            self.transport.write(data)
             # buffer the the fragments
             if not self.fragments:
                 self.fragments = data
@@ -47,35 +49,40 @@ class TransportCSClientProtocol(LineReceiver):
             # check if we received all the fragments
             if self.fragmentsLength == self.packetLength:
                 self.mode = "LINE"
-                self.setLineMode()
+                self.sendChunk(self.line, self.fragments)
 
+    def sendChunk(self, line, data):
+        self.mutex.acquire()
+        self.sendLine(line)
+        self.setRawMode()
+        length = len(data)
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            self.transport.write(data[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+        self.setLineMode()
+        self.mutex.release()
+        log.msg("CS client: sent data to gsserver")
+        
     def connectionMade(self):
         log.msg("Worker connection made")
         self.status = REGISTERED
-    
+
+    def lineReceived(self, line):
+        log.msg("cs client received ack from gsserver")
+        self.factory.fromCSClientToWorker.put(line)
+        
     def dataReceived(self, packetstring):
         self.factory.fromCSClientToWorker.put(packetstring)
-    
-    # send a packet, if needed using multiple fragments
-    def sendPacket(self, packetstring):
-        self.mutexsp.acquire()
-        length = len(packetstring)
-        packetstring = str(length).zfill(LHSIZE) + packetstring
-        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
-            self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
-        self.mutexsp.release()
         
-    def register1(self):
+    def register(self):
         packet = Packet("sender", "receiver", "worker", "Server", REGISTER, None, HEADERS_SIZE)
         data = pickle.dumps(packet)
         self.transport.write(data)
         
-    def registered1(self, packet):
-        log.msg("Whoa!!!!!")
-        self.id = packet.payload
+    def registered(self, packet):
+        self.address = packet.payload
         self.status = REGISTERED
         
-    def deregister1(self):
+    def deregister(self):
         self.transport.loseConnection()
         
             

@@ -24,7 +24,7 @@ class TransportWorkerProtocol(LineReceiver):
         self.address = "Worker"
         #self.MAX_LENGTH = 64000
         self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
-        self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getData)
+        self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getReply)
         self.cswaiter.start()
         self.ccwaiter.start()
         self.mutexpr = Lock()
@@ -39,6 +39,17 @@ class TransportWorkerProtocol(LineReceiver):
         # strip off the length header
         self.sendPacket(data)
 
+    def getReply(self, reply):
+        # print "worker got OK, going for next", reply
+        if "OK" in reply:
+            print("DOWNLINKED")
+            self.getWork(self.work)
+        elif "NO" in reply:
+            print("ERROR WHILE DOWNLINKING")
+        else:
+            print "Unokwn message"
+            print reply
+            
     def connectionMade(self):
         self.register()
 
@@ -110,7 +121,7 @@ class TransportWorkerProtocol(LineReceiver):
         length = len(packetstring)
         packetstring = str(length).zfill(LHSIZE) + packetstring
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
-            log.msg("Sending a fragment")
+            # log.msg("Sending a fragment")
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
         self.mutexsp.release()
     
@@ -135,6 +146,7 @@ class TransportWorkerProtocol(LineReceiver):
         self.transport.loseConnection()
 
     def getWork(self, work = None):
+        # print("Worker requesting work")
         if work:
             self.sendLine("WORK:" + self.address + ":" + work.tostr())
         else:
@@ -145,6 +157,7 @@ class TransportWorkerProtocol(LineReceiver):
         task.deferLater(reactor, 1.0, self.getWork)
     
     def gotWork(self, work):
+        # print("Worker got work")
         if work.job == "STORE":
             self.store(work)
         elif work.job == "PROCESS":
@@ -176,7 +189,7 @@ class TransportWorkerProtocol(LineReceiver):
         image = Image.open(filename)
         edges = image.filter(ImageFilter.FIND_EDGES)
         edges.save(directory + os.path.split(work.filename)[1])
-        task.deferLater(reactor, 1.0, self.getWork, work)
+        self.getWork(work)
         
     def downlink(self, work):
         filename = self.homedir + work.filename
@@ -186,9 +199,11 @@ class TransportWorkerProtocol(LineReceiver):
         work.payload = str(len(data))
         metadata = "CHUNK:" + work.tostr()
         self.forwardToServer(metadata, data)
-        task.deferLater(reactor, 5.0, self.getWork, Work(work.uuid, work.job, work.filename, None))
+        self.work = work
+        # wait for downlink ack to call getWork
                    
     def forwardToServer(self, metadata, data):
+        print "worker: forwarded to csclient"
         self.factory.fromWorkerToCSClient.put(metadata)
         self.factory.fromWorkerToCSClient.put(data)
    

@@ -168,7 +168,7 @@ class TransportServerFactory(protocol.Factory):
     
     def getData(self, line):
         #log.msg("Server: Got a packet from SServer")
-        log.msg(line)
+        # log.msg(line)
         self.lineReceived(line)
         
     def buildMissions(self, commands):
@@ -189,7 +189,7 @@ class TransportServerFactory(protocol.Factory):
             self.missions.append(mission)
 
     def lineReceived(self, line):
-        print(line)
+        # print(line)
         fields = line.split(":")
         command = fields[0]
         if command == "GET_MISSION":

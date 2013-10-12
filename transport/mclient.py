@@ -27,7 +27,7 @@ class TransportMasterClientProtocol(LineReceiver):
         self.factory.fromMasterClientToMaster.put(line)
         
     def getData(self, packet):
-        log.msg(packet)
+        # log.msg(packet)
         self.sendLine(packet)
 
     def connectionMade(self):
