@@ -1,7 +1,7 @@
 import os
 import math
+import time
 import pickle
-from time import sleep
 from threading import Lock
 
 from twisted.python import log
@@ -89,8 +89,8 @@ class TransportMasterProtocol(LineReceiver):
     def sendWork(self, work, data):
         metadata = work.tostr()
         self.sendLine("WORK:" + metadata)
-        if work.job == "STORE":
-            self.sendData(data)
+        # if work.job == "STORE":
+        #    self.sendData(data)
     
     def sendData(self, data):
         self.setRawMode()
@@ -111,6 +111,7 @@ class TransportMasterFactory(protocol.Factory):
         self.metadir = self.homedir + "metadata/"
         self.fileMap = {}
         self.metadata = {}
+        self.t1 = None
         try:
             os.mkdir(self.homedir)
             os.mkdir(self.metadir)
@@ -136,7 +137,7 @@ class TransportMasterFactory(protocol.Factory):
                 mission.output = fields[4]
             self.gotMission(mission)
         else:
-            log.msg("Received unknown packet from Master Client: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            log.msg("Received unknown packet from Master Client")
             log.msg(packet)
 
     def sendData(self, data):
@@ -157,11 +158,12 @@ class TransportMasterFactory(protocol.Factory):
         self.getMission()
             
     def getMission(self):
+        self.t1 = time.time()
         data = "GET_MISSION"
         self.fromMasterToMasterClient.put(data)
 
     def gotMission(self, mission):
-        if mission:
+        if mission:        
             log.msg("Got mission")
             log.msg(mission)
             self.execute(mission)
@@ -252,9 +254,10 @@ class TransportMasterFactory(protocol.Factory):
                 work = Work(chunk.uuid, "STORE", chunk.name, None)
                 work.size = chunk.size
                 log.msg(work)
-                return work, data
-        # no work: set a callback to check if mission is complete and return
-        task.deferLater(reactor, 0.15, self.isMissionComplete)
+                return work, None
+        # no work: check if mission is complete
+        if self.isStoreMissionComplete():
+            self.storeMissionComplete(self.mission)
         return None, None
 
     def getProcessWork(self, worker):
@@ -265,6 +268,7 @@ class TransportMasterFactory(protocol.Factory):
             if chunk.status == "UNASSIGNED":
                 chunk.status = "ASSIGNED"
                 work = Work(chunk.uuid, "PROCESS", chunk.name, self.mission.output.split(".")[0])
+                work.size = chunk.size
                 log.msg(work)
                 return work, None
         # no work: check if mission is complete
@@ -280,6 +284,7 @@ class TransportMasterFactory(protocol.Factory):
             if chunk.status == "UNASSIGNED":
                 chunk.status = "ASSIGNED"
                 work = Work(chunk.uuid, "DOWNLINK", chunk.name, None)
+                work.size = chunk.size
                 log.msg(work)
                 return work, None
         # no work: check if mission is complete
@@ -372,17 +377,23 @@ class TransportMasterFactory(protocol.Factory):
         log.msg("Sense Mission Accomplished")
         self.missionComplete(mission)
             
-    def storeMissionComplete(self):
-        log.msg("Store Mission Accomplished")
+    def storeMissionComplete(self, mission):
+        self.t2 = time.time()
+        self.mission = None
+        log.msg("Store Mission Accomplished")    
+        print "Time taken for store mission is: ", (self.t2 - self.t1)
         # send the metadata
         self.fileMap[self.metadata.filename] = self.metadata
         # self.sendMetadata(self.metadata)
         # self.metadata.save(self.metadir)
-        task.deferLater(reactor, 1, self.missionComplete, self.mission)
-        #self.missionComplete(self.mission)
+        time.sleep(CHUNK_WRITE_TIME)
+        task.deferLater(reactor, 1, self.getMission)
 
     def processMissionComplete(self, mission):
         log.msg("Process Mission Accomplished")
+        self.t2 = time.time()
+        self.mission = None
+        print "Time taken for process mission is: ", (self.t2 - self.t1)
         log.msg(mission)
         subdirname = mission.output.split(".")[0] + "/"
         # making changes to metadata
@@ -390,10 +401,10 @@ class TransportMasterFactory(protocol.Factory):
         for chunks in chunkMap.itervalues():
             for chunk in chunks:
                 chunk.name = subdirname + os.path.split(chunk.name)[1]
+                chunk.size = chunk.size
         self.metadata.directory = os.path.split(self.metadata.directory)[0] + "/" + subdirname
         self.metadata.filename = mission.output
         # send the metadata
-        # log.msg("sending metadata")
         self.fileMap[self.metadata.filename] = self.metadata
         #self.sendMetadata(self.metadata)
         self.metadata.save(self.metadir)
@@ -401,6 +412,9 @@ class TransportMasterFactory(protocol.Factory):
         
     def downlinkMissionComplete(self, mission):
         log.msg("Downlink Mission Accomplished")
+        self.t2 = time.time()
+        self.mission = None
+        print "Time taken for downlink mission is: ", (self.t2 - self.t1)
         self.fileMap[self.metadata.filename] = self.metadata
         self.sendMetadata(self.metadata)
         self.metadata.save(self.metadir)

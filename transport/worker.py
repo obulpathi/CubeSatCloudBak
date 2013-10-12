@@ -42,7 +42,7 @@ class TransportWorkerProtocol(LineReceiver):
     def getReply(self, reply):
         # print "worker got OK, going for next", reply
         if "OK" in reply:
-            print("DOWNLINKED")
+            # print("DOWNLINKED")
             self.getWork(self.work)
         elif "NO" in reply:
             print("ERROR WHILE DOWNLINKING")
@@ -63,18 +63,9 @@ class TransportWorkerProtocol(LineReceiver):
             self.noWork()
         elif command == "WORK":
             work = Work(fields[1], fields[2], fields[3], None)
-            if work.job == "STORE":
-                work.size = int(fields[4])
-                self.fragments = None
-                self.fragmentsLength = 0
-                self.packetLength = work.size
-                self.work = work
-                self.setRawMode()
-                return            
-            elif work.job == "PROCESS":
-                work.payload = fields[4]
-            else:
-                pass
+            work.size = int(fields[4])
+            if work.job == "PROCESS":
+                work.payload = fields[5]
             self.gotWork(work)
         else:
             print(line)
@@ -146,7 +137,6 @@ class TransportWorkerProtocol(LineReceiver):
         self.transport.loseConnection()
 
     def getWork(self, work = None):
-        # print("Worker requesting work")
         if work:
             self.sendLine("WORK:" + self.address + ":" + work.tostr())
         else:
@@ -159,9 +149,11 @@ class TransportWorkerProtocol(LineReceiver):
     def gotWork(self, work):
         # print("Worker got work")
         if work.job == "STORE":
-            self.store(work)
+            task.deferLater(reactor, ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000), self.store, work)
         elif work.job == "PROCESS":
-            self.process(work)
+            # simulate chunk read
+            task.deferLater(reactor, (CHUNK_READ_TIME + CHUNK_WRITE_TIME), self.process, work)
+            # self.process(work)
         elif work.job == "DOWNLINK":
             self.downlink(work)
         else:
@@ -173,39 +165,30 @@ class TransportWorkerProtocol(LineReceiver):
         directory = self.homedir + os.path.split(work.filename)[0]
         if not os.path.exists(directory):
             os.mkdir(directory)
-        chunk = open(self.homedir + work.filename, "w")
-        chunk.write(work.payload)
-        chunk.close()
         work.payload = None
-        self.getWork(work)
+        task.deferLater(reactor, CHUNK_WRITE_TIME, self.getWork, work)
     
     def process(self, work):
         log.msg(work)
-        # create the directory, if needed
-        directory = self.homedir + work.payload + "/"
-        if not os.path.exists(directory):
-            os.mkdir(directory)
-        filename = self.homedir + work.filename
-        image = Image.open(filename)
-        edges = image.filter(ImageFilter.FIND_EDGES)
-        edges.save(directory + os.path.split(work.filename)[1])
-        self.getWork(work)
+        # simulate processing
+        task.deferLater(reactor, ((CHUNK_PROCESS_TIME * work.size) / 1000), self.getWork, work)
         
     def downlink(self, work):
         filename = self.homedir + work.filename
+        """
         log.msg(filename)
         data = open(filename).read()
         log.msg(work)
         work.payload = str(len(data))
+        """
         metadata = "CHUNK:" + work.tostr()
-        self.forwardToServer(metadata, data)
+        self.forwardToServer(metadata)
         self.work = work
         # wait for downlink ack to call getWork
                    
-    def forwardToServer(self, metadata, data):
-        print "worker: forwarded to csclient"
+    def forwardToServer(self, metadata, data = None):
         self.factory.fromWorkerToCSClient.put(metadata)
-        self.factory.fromWorkerToCSClient.put(data)
+        # self.factory.fromWorkerToCSClient.put(data)
    
     def forwardToChild(self, packet):
         self.factory.fromWorkerToCSServer.put(packet)

@@ -55,6 +55,13 @@ UNASSINGED = "UNASSIGNED"
 # battery
 BATTERY_LOW = 100
 
+# PROFILING RESULTS PER KB
+CHUNK_READ_TIME = 0.004
+CHUNK_WRITE_TIME = 0.016
+CHUNK_PROCESS_TIME = 0.383
+C2C_CHUNK_COMMUNICATION_TIME = 0.0198
+CS2GS_CHUNK_COMMUNICATION_TIME = 1.086
+
 # Communication channel models
 Link = namedtuple('Link', 'datarate mtu latency overhead')
 S2GSLink = Link(10 * MBPS, MB, 100, 64)
@@ -64,8 +71,8 @@ CS2GSLink = Link(9600, MB, 5, 64)
 CS2CSLink = Link(MBPS, MB, 2, 64)
 
 # chunk sizes
-chunk_x = 1000
-chunk_y = 1000
+chunk_x = 200
+chunk_y = 200
 
 # missions
 #Mission = namedtuple('Mission', 'mission')
@@ -83,24 +90,19 @@ class Work(object):
         self.filename = filename
         self.payload = payload
     def __repr__(self):
-        strrepr =  "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename
-        if self.job == "STORE":
-            strrepr = strrepr + ", size: " + str(self.size)
+        strrepr =  "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename + ", size: " + str(self.size)
         return strrepr
     def tostr(self):
-        strrepr = str(self.uuid) + ":" + self.job + ":" + self.filename
+        strrepr = str(self.uuid) + ":" + self.job + ":" + self.filename + ":" + str(self.size)
         if self.payload:
             strrepr = strrepr + ":" + self.payload
-        if self.job == "STORE":
-            strrepr = strrepr + ":" + str(self.size)
         return strrepr
     def fromstr(self, initstr):
         fields = initstr.split(":")
         self.uuid = fields[0]
         self.job = fields[1]
         self.filename = fields[2]
-        if self.job == "STORE":
-            self.size = fields[3]
+        self.size = fields[3]
 
 class Chunk(object):
     def __init__(self, uuid, name, size, box):

@@ -28,16 +28,16 @@ class TransportCSClientProtocol(LineReceiver):
 
     def getData(self, data):
         if self.mode == "LINE":
-            # print(data)
             self.line = data
             fields = data.split(":")
             self.work = Work(fields[1], fields[2], fields[3], None)
-            self.work.size = fields[4]
-            self.work.fromstr(data)
+            self.work.size = int(fields[4])
+            # self.work.fromstr(data)
             self.packetLength = int(self.work.size)
             self.fragments = None
             self.fragmentsLength = 0
-            self.mode = "RAW"
+            self.sendChunk(self.line, None)
+            # self.mode = "RAW"
         else:
             # buffer the the fragments
             if not self.fragments:
@@ -54,6 +54,10 @@ class TransportCSClientProtocol(LineReceiver):
     def sendChunk(self, line, data):
         self.mutex.acquire()
         self.sendLine(line)
+        self.mutex.release()
+        # task.deferLater(reactor, CS2GS_CHUNK_COMMUNICATION_TIME, self.sendLine, line)
+        """
+        self.sendLine(line)
         self.setRawMode()
         length = len(data)
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
@@ -61,6 +65,7 @@ class TransportCSClientProtocol(LineReceiver):
         self.setLineMode()
         self.mutex.release()
         log.msg("CS client: sent data to gsserver")
+        """
         
     def connectionMade(self):
         log.msg("Worker connection made")

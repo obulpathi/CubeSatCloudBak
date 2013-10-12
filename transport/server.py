@@ -253,5 +253,5 @@ class TransportServerFactory(protocol.Factory):
         return self.getMission()
 
     def finishedDownlinkMission(self, filename):
-        utils.stichChunksIntoImage(self.homedir, self.homedir + filename, self.fileMap[filename]) 
+        # utils.stichChunksIntoImage(self.homedir, self.homedir + filename, self.fileMap[filename]) 
         log.msg("Downlink Mission Complete")

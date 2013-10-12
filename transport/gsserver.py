@@ -2,6 +2,7 @@ import pickle
 from threading import Lock
 
 from twisted.python import log
+from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
@@ -27,19 +28,25 @@ class TransportGSServerProtocol(LineReceiver):
         self.sendLine(line)
     
     def lineReceived(self, line):
+        # print("Ground station got line", line)
         self.mutex.acquire()
-        self.setRawMode()
+        # self.setRawMode()
         # print("GS Server line received")
         fields = line.split(":")
         self.work = Work(fields[1], fields[2], fields[3], None)
-        self.work.size = fields[4]
+        self.work.size = int(fields[4])
         self.packetLength = int(self.work.size)
         self.fragments = None
         self.fragmentsLength = 0
         self.factory.fromGSServerToGSClient.put(line)
-        self.mode = "RAW"
+        # self.mode = "RAW"
+        task.deferLater(reactor, ((CS2GS_CHUNK_COMMUNICATION_TIME * self.work.size) / 1000), self.sendAck)
         self.mutex.release() 
 
+    def sendAck(self,):
+        # print("Ground station sending ack")
+        self.sendLine("OK:Ground Station server received data and acked Ground Station server received data and acked")
+        
     def rawDataReceived(self, data):
         self.mutex.acquire()
         # log.msg("GS Server: received data")
