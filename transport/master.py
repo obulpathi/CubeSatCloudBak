@@ -79,18 +79,16 @@ class TransportMasterProtocol(LineReceiver):
         if not work:
             self.noWork(worker)
         else:
-            self.sendWork(work, data)
+            self.sendWork(worker, work, data)
             
     # send no work message
-    def noWork(self, destination):
-        self.sendLine("NO_WORK")
+    def noWork(self, worker):
+        self.sendLine(worker + ":NO_WORK:")
         
     # send work
-    def sendWork(self, work, data):
+    def sendWork(self, worker, work, data):
         metadata = work.tostr()
-        self.sendLine("WORK:" + metadata)
-        # if work.job == "STORE":
-        #    self.sendData(data)
+        self.sendLine(worker + ":WORK:" + metadata)
     
     def sendData(self, data):
         self.setRawMode()

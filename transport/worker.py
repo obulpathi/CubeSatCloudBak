@@ -21,7 +21,7 @@ class TransportWorkerProtocol(LineReceiver):
     def __init__(self, factory, homedir):
         self.factory = factory
         self.homedir = os.path.expanduser(homedir)
-        self.address = "Worker"
+        self.address = self.factory.address 
         #self.MAX_LENGTH = 64000
         self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getReply)
@@ -37,7 +37,7 @@ class TransportWorkerProtocol(LineReceiver):
 
     def getData(self, data):
         # strip off the length header
-        self.sendPacket(data)
+        self.sendLine(data)
 
     def getReply(self, reply):
         # print "worker got OK, going for next", reply
@@ -56,6 +56,11 @@ class TransportWorkerProtocol(LineReceiver):
     # line received
     def lineReceived(self, line):
         fields = line.split(":")
+        destination = fields[0]
+        fields = fields[1:]
+        if destination != self.address:
+            self.factory.fromWorkerToCSServer.put(line)
+            return
         command = fields[0]
         if command == "REGISTERED":
             self.registered(fields[1])
@@ -119,8 +124,9 @@ class TransportWorkerProtocol(LineReceiver):
     def register(self):
         #packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
         #packetstring = pickle.dumps(packet)
-        self.sendLine("REGISTER")
+        # self.sendLine("REGISTER")
         #self.sendPacket(packetstring)
+        self.getWork()
         
     def registered(self, address):
         self.address = address
@@ -148,6 +154,9 @@ class TransportWorkerProtocol(LineReceiver):
     
     def gotWork(self, work):
         # print("Worker got work")
+        if self.address == "5":
+            print "#########################################################"
+            print work
         if work.job == "STORE":
             task.deferLater(reactor, ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000), self.store, work)
         elif work.job == "PROCESS":
@@ -175,12 +184,6 @@ class TransportWorkerProtocol(LineReceiver):
         
     def downlink(self, work):
         filename = self.homedir + work.filename
-        """
-        log.msg(filename)
-        data = open(filename).read()
-        log.msg(work)
-        work.payload = str(len(data))
-        """
         metadata = "CHUNK:" + work.tostr()
         self.forwardToServer(metadata)
         self.work = work
@@ -196,7 +199,7 @@ class TransportWorkerProtocol(LineReceiver):
             
 class TransportWorkerFactory(protocol.ClientFactory):
     def __init__(self, address, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
-        self.address = address
+        self.address = str(address)
         self.homedir = homedir
         self.fromWorkerToCSClient = fromWorkerToCSClient
         self.fromCSClientToWorker = fromCSClientToWorker
@@ -211,5 +214,6 @@ class TransportWorkerFactory(protocol.ClientFactory):
         reactor.stop()
         
     def clientConnectionLost(self, connector, reason):
-        log.msg("Connection lost.")
+        log.msg("Connection lost#######.")
+        print connector, reason
         reactor.stop()
