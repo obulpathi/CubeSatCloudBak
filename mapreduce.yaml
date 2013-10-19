@@ -7,7 +7,7 @@ commands:
     - {operation: DOWNLINK, filename: result.jpg}
 
 server:
-    address: localhost
+    address: 10.227.80.70
     port: 4000
     ssport: 4004
     homedir: ~/cloud/data/server/
@@ -20,8 +20,33 @@ master:
     address: localhost
     port: 8080
     homedir: ~/cloud/data/master/
-    
+
 worker:
-    address: localhost
+    address: 1
+    port: 8888
+    homedir: ~/cloud/data/
+    
+worker1:
+    address: 1
+    port: 8888
+    homedir: ~/cloud/data/
+    
+worker2:
+    address: 2
+    port: 8888
+    homedir: ~/cloud/data/
+
+worker3:
+    address: 3
+    port: 8888
+    homedir: ~/cloud/data/
+    
+worker4:
+    address: 4
+    port: 8888
+    homedir: ~/cloud/data/
+
+worker5:
+    address: 5
     port: 8888
     homedir: ~/cloud/data/

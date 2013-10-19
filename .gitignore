@@ -7,6 +7,7 @@ TODO
 data.jpg
 image.jpg
 data/*
+image/*
 test/pickle/metadata
 tests/profiling/results/
 tests/profiling/output/

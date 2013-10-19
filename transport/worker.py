@@ -21,7 +21,7 @@ class TransportWorkerProtocol(LineReceiver):
     def __init__(self, factory, homedir):
         self.factory = factory
         self.homedir = os.path.expanduser(homedir)
-        self.address = "Worker"
+        self.address = str(self.factory.address)
         #self.MAX_LENGTH = 64000
         self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getReply)
@@ -126,10 +126,7 @@ class TransportWorkerProtocol(LineReceiver):
         self.mutexsp.release()
     
     def register(self):
-        #packet = Packet("Worker", "Server", "Worker", "Server", REGISTER, None, HEADERS_SIZE)
-        #packetstring = pickle.dumps(packet)
-        self.sendLine("REGISTER")
-        #self.sendPacket(packetstring)
+        self.sendLine("REGISTER" + self.address)
         
     def registered(self, address):
         self.address = address

@@ -1,6 +1,6 @@
 all:
 	rm -rf ~/cloud/data/*
-	python simulator.py 4
+	python simulator.py 2
 
 torrent:
 	echo "execute torrent mission"
@@ -28,7 +28,7 @@ showlinks:
 
 install:
 	echo "Install required software"
-	sudo apt-get install python-twisted cython python-dev python-matplotlib python-numpy python-scipy python-pip
+	sudo apt-get install python-twisted cython python-dev python-matplotlib python-numpy python-scipy python-pip python-yaml
 	sudo pip install -U scikit-image
 	cd /usr/local/lib/python2.7/dist-packages
 	sudo chown -R pi:pi *
