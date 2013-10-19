@@ -22,7 +22,8 @@ BILLION = 1000000000
 MAX_PACKET_SIZE = 10000
 
 # chunk constants
-CHUNK_SIZE = 65536
+# CHUNK_SIZE = 65536
+CHUNK_SIZE = 1000
 
 # commands
 ACK = "ACK"
@@ -67,14 +68,14 @@ CS2CSLink = Link(MBPS, MB, 2, 64)
 chunk_x = 100
 chunk_y = 100
 
-# missions
-#Mission = namedtuple('Mission', 'mission')
-#Torrent = namedtuple('Torrent', 'payload size chunks')
-#MapReduce = namedtuple('MapReduce', 'payload size chunks')
-
 Box = namedtuple('Box', 'left top right bottom')
 
-#Work = namedtuple('Work', 'uuid job filename payload')
+class WorkerState(object):
+    def __init__(self, address, transport):
+        self.address = address
+        self.transport = transport
+        self.state = "IDLE"
+        self.job = None
 
 class Work(object):
     def __init__(self, uuid, job, filename, payload):
@@ -113,6 +114,18 @@ class Chunk(object):
     def __repr__(self):
         return "Name: " + str(self.name) + ", Size: " + str(self.size) + \
                ", Box: " + str(self.box) + ", Status: " + str(self.status) + ", Worker: " + str(self.worker)
+
+class CodedChunk(object):
+    def __init__(self, uuid, name, size):
+        self.uuid = uuid
+        self.name = name
+        self.size = size
+        self.status = "UNASSIGNED"
+        self.worker = None
+        
+    def __repr__(self):
+        return "Name: " + str(self.name) + ", Size: " + str(self.size) + \
+               ", Status: " + str(self.status) + ", Worker: " + str(self.worker)
 
 # Packet flags
 NO_FLAG     = "NO_FLAG"
@@ -286,4 +299,68 @@ class Metadata(object):
                 box = Box(int(fields[3]), int(fields[4]), int(fields[5]), int(fields[6]))
                 chunk = Chunk(fields[0], fields[1], int(fields[2]), box)
                 fields = fields[7:]
+                self.chunkMap[worker].append(chunk)
+
+class CCMetadata(object):
+    def __init__(self):
+        pass
+
+    # save the metadata into file
+    def save(self, directory):
+        # reconstruct the whole file path
+        filename = directory + self.filename.split(".")[0]
+        print("Saving metadata for the file: %s" % filename)
+        metafile = open(filename, "w")
+        metastring = self.tostr()
+        metafile.write(metastring)
+        metafile.close()
+    
+    def __repr__(self):
+        data = self.filename
+        data = data + "\n" + self.directory
+        data = data + "\n" + str(self.size)
+        chunkMap = self.chunkMap
+        numOfWorkers = len(chunkMap)
+        data = data +  "\n" + str(numOfWorkers)
+        for worker, chunklist in chunkMap.iteritems():
+            data = data +  "\n" + str(worker)
+            for chunk in chunklist:
+                data = data +  ":" + chunk.uuid
+                data = data +  ":" + chunk.name
+                data = data +  ":" + str(chunk.size) + "\n"
+        return data
+
+    def tostr(self):
+        data = self.filename
+        data = data + ":" + self.directory
+        data = data + ":" + str(self.size)
+        chunkMap = self.chunkMap
+        numOfWorkers = len(chunkMap)
+        data = data +  ":" + str(numOfWorkers)
+        for worker, chunklist in chunkMap.iteritems():
+            data = data +  ":" + str(worker)
+            numOfChunks = len(chunklist)
+            data = data +  ":" + str(numOfChunks)
+            for chunk in chunklist:
+                data = data +  ":" + chunk.uuid
+                data = data +  ":" + chunk.name
+                data = data +  ":" + str(chunk.size)
+        return data
+
+    def fromstr(self, metadata):
+        fields = metadata.split(":")
+        self.filename = fields[0]
+        self.directory = fields[1]
+        self.size = int(fields[2])
+        self.chunkMap = {}
+        numOfWorkers = int(fields[3])
+        fields = fields[4:]
+        for count in range(numOfWorkers):
+            worker = fields[0]
+            numOfChunks = int(fields[1])
+            self.chunkMap[worker] = []
+            fields = fields[2:]
+            for chunkcount in range(numOfChunks):
+                chunk = CodedChunk(fields[0], fields[1], int(fields[2]))
+                fields = fields[3:]
                 self.chunkMap[worker].append(chunk)

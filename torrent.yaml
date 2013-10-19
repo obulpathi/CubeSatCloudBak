@@ -3,7 +3,7 @@
 commands:
     - {operation: SENSE, filename: image.jpg, lat: lat, lon: lon}
     - {operation: STORE, filename: image.jpg}
-    - {operation: DOWNLINK, filename: result.jpg}
+    - {operation: DOWNLINK, filename: image.jpg}
 
 server:
     address: localhost

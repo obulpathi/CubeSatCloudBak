@@ -1,6 +1,6 @@
 all:
 	rm -rf ~/cloud/data/*
-	python simulator.py 2
+	python simulator.py 5
 
 torrent:
 	echo "execute torrent mission"

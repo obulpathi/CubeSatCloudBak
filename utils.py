@@ -78,7 +78,66 @@ def stichChunksIntoImage(directory, filename, metadata):
             result.paste(data, (chunk.box.left, chunk.box.top))
     result.save(filename)
     return
-            
+
+def splitImageAndCode(filename, directory):
+    metadata = CCMetadata()
+    chunks = {}
+    # check if the file exists
+    if not os.path.isfile(filename):
+        print("Error: no such file: %s exists" % filename)
+        exit(1)
+    image = open(filename, "r")
+    data = image.read()
+    size = len(data)
+    image.close()
+    prefix = filename.split(".")[0] + "/"
+    # create data subdirectory for this file
+    os.mkdir(directory + prefix)
+    for count in range(int(math.ceil(float(size)/CHUNK_SIZE))):
+        chunkdata = data[count*CHUNK_SIZE: (count+1)*CHUNK_SIZE]
+        chunkname = directory + prefix + str(count) + ".jpg"
+        chunksize = len(chunkdata)
+        chunkfile = open(chunkname, "w")
+        chunkfile.write(chunkdata)
+        chunkfile.close()
+        chunk = CodedChunk(str(uuid4()), prefix + os.path.split(chunkname)[1], chunksize)
+        chunks[chunk.uuid] = chunk
+    metadata.filename = filename
+    metadata.directory = directory
+    metadata.size = size
+    metadata.chunkMap = {}
+    return (chunks, metadata)
+
+def uncodeAndStich(metadata, filename):
+    # check if the target file exists
+    if os.path.isfile(filename):
+        print("Error: File : %s already exists" % filename)
+        exit(1)
+    image = open(filename, "w")
+    directory = "data/server/"
+    prefix = "image/"
+    chunkMap = metadata.chunkMap
+    for count in range(int(math.ceil(float(metadata.size)/CHUNK_SIZE))):
+        chunkname = directory + prefix + str(count) + ".jpg"
+        chunkfile = open(chunkname, "r")
+        chunkdata = chunkfile.read()
+        chunkfile.close()
+        image.write(chunkdata)
+    image.close()
+    
+def uniformLoadBalancer(workers, chunks, metadata):
+    numOfChunks = len(chunks)
+    numOfWorkers = len(workers)
+    print "number of chunks: ", numOfChunks
+    print "number of workers: ", numOfWorkers
+    for count, key in enumerate(chunks):
+        worker = str(count % numOfWorkers)
+        if worker in metadata.chunkMap:
+            metadata.chunkMap[worker].append(chunks[key])
+        else:
+            metadata.chunkMap[worker] = [chunks[key]]
+    print metadata
+    
 def banner(msg):
     print("#############################################################")
     print(msg)

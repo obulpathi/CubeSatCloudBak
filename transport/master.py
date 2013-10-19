@@ -29,7 +29,7 @@ class TransportMasterProtocol(LineReceiver):
         fields = line.split(":")
         command = fields[0]
         if command == "REGISTER":
-            self.registerWorker()
+            self.registerWorker(fields[1])
         elif command == "WORK":
             if fields[2]:
                 work = Work(fields[2], fields[3], fields[4], None)
@@ -37,7 +37,7 @@ class TransportMasterProtocol(LineReceiver):
             else:
                 self.getWork(fields[1], None)
         else:
-            print(line)
+            print "Garbage: ", line
                                     
     # received a packet
     def packetReceived(self, packet):
@@ -66,11 +66,8 @@ class TransportMasterProtocol(LineReceiver):
         self.mutexsp.release()
                 
     # register worker
-    # def registerWorker(self, packet):
-    def registerWorker(self):        
-        log.msg("registered worker")
-        self.factory.registrationCount = self.factory.registrationCount + 1
-        self.sendLine("REGISTERED:" + str(self.factory.registrationCount))
+    def registerWorker(self, worker):
+        self.factory.registerWorker(worker, self)
         self.status = REGISTERED
         
     # get work to workers
@@ -87,6 +84,8 @@ class TransportMasterProtocol(LineReceiver):
         
     # send work
     def sendWork(self, work, data):
+        print "Sending work to worker"
+        print work
         metadata = work.tostr()
         self.sendLine("WORK:" + metadata)
         if work.job == "STORE":
@@ -105,6 +104,7 @@ class TransportMasterFactory(protocol.Factory):
         self.status = "START"
         self.address = "Master"
         self.mission = None
+        self.workers = {}
         self.transports = []
         self.registrationCount = 0
         self.homedir = os.path.expanduser(homedir)
@@ -153,9 +153,14 @@ class TransportMasterFactory(protocol.Factory):
         return transport
     
     def registerMasterClient(self):
-        log.msg("Do registritation stuff here")
+        log.msg("Registered Master Client")
         self.getMission()
-            
+
+    def registerWorker(self, worker, transport):
+        self.workers[worker] = WorkerState(worker, transport)
+        log.msg("Registered worker: " + worker)
+        self.status = REGISTERED
+                
     def getMission(self):
         data = "GET_MISSION"
         self.fromMasterToMasterClient.put(data)
@@ -199,9 +204,13 @@ class TransportMasterFactory(protocol.Factory):
     def store(self, mission):
         log.msg("Executing storing mission: ")
         # split the image into chunks
-        self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename, self.homedir)
+        self.chunks, self.metadata = utils.splitImageAndCode(mission.filename, self.homedir)
+        # self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename, self.homedir)
+        # assign work to workers, using Uniform Load balancer
+        utils.uniformLoadBalancer(self.workers, self.chunks, self.metadata)
         # mission is ready to be executed
         self.mission = mission
+        self.startStoreOperation()
 
     # process the given file and downlink
     def process(self, mission):
@@ -222,7 +231,13 @@ class TransportMasterFactory(protocol.Factory):
         for chunks in chunkMap.itervalues():
             for chunk in chunks:
                 chunk.status = "UNASSIGNED"
-
+    
+    # start store operation
+    def startStoreOperation(self):
+        for worker in self.workers:
+            work, data = self.getWork(worker)
+            self.workers[worker].transport.sendWork(work, data)
+        
     def getWork(self, worker, oldWork = None):
         # log.msg("Work requested by worker")
         if oldWork:
@@ -242,12 +257,15 @@ class TransportMasterFactory(protocol.Factory):
             return None, None
     
     def getStoreWork(self, worker):
-        # log.msg("Store work requested by worker")
+        log.msg("Store work requested by worker")
         directory = self.metadata.directory
-        for chunk in self.chunks.itervalues():
+        chunkMap = self.metadata.chunkMap
+        chunks = chunkMap.get(worker, [])
+        print len(chunks)
+        for chunk in chunks:
             if chunk.status == "UNASSIGNED":
-                chunk.worker = worker
                 chunk.status = "ASSIGNED"
+                chunk.worker = worker
                 data = open(directory + chunk.name).read()
                 work = Work(chunk.uuid, "STORE", chunk.name, None)
                 work.size = chunk.size

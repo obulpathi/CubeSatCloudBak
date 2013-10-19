@@ -126,7 +126,7 @@ class TransportWorkerProtocol(LineReceiver):
         self.mutexsp.release()
     
     def register(self):
-        self.sendLine("REGISTER" + self.address)
+        self.sendLine("REGISTER:" + self.address)
         
     def registered(self, address):
         self.address = address
@@ -137,7 +137,9 @@ class TransportWorkerProtocol(LineReceiver):
             log.msg("OSError: Unable to create home directory, exiting")
             exit()
         self.status = IDLE
-        self.getWork(None)
+
+    def heartbeat(self):
+        pass
         
     def deregister(self):
         self.transport.loseConnection()

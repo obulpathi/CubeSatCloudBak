@@ -230,10 +230,10 @@ class TransportServerFactory(protocol.Factory):
     
     def receivedMetadata(self, metastring):
         # log.msg(metastring)
-        metadata = Metadata()
+        metadata = CCMetadata()
         metadata.fromstr(metastring)
         self.fileMap[metadata.filename] = metadata
-        self.finishedDownlinkMission(metadata.filename)
+        self.finishedDownlinkMission(metadata)
 
     def finishedMission(self, mission):
         self.mutex.acquire()
@@ -252,6 +252,7 @@ class TransportServerFactory(protocol.Factory):
         self.mutex.release()
         return self.getMission()
 
-    def finishedDownlinkMission(self, filename):
-        utils.stichChunksIntoImage(self.homedir, self.homedir + filename, self.fileMap[filename]) 
+    def finishedDownlinkMission(self, metadata):
+        utils.uncodeAndStich(metadata, "data/server/image.jpg")
+        # utils.stichChunksIntoImage(self.homedir, self.homedir + filename, self.fileMap[filename]) 
         log.msg("Downlink Mission Complete")
