@@ -20,9 +20,10 @@ class TransportMasterProtocol(LineReceiver):
         self.status = IDLE
         self.mode = "LINE"
         #self.MAX_LENGTH = 64000
+        self.mutex = Lock()
         self.mutexpr = Lock()
         self.mutexsp = Lock()
-        self.mytransport = MyTransport(self, "Master")
+        self.works = []
     
     # line received
     def lineReceived(self, line):
@@ -75,11 +76,22 @@ class TransportMasterProtocol(LineReceiver):
         
     # get work to workers
     def getWork(self, worker, finishedWork = None):
+        self.mutex.acquire()
         work, data = self.factory.getWork(worker, finishedWork)
         if not work:
             self.noWork(worker)
+        elif work.job == "STORE":
+            if not self.works:
+                # print "no store jobs as of now .. so enqueign and scheduling"
+                # print ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000)
+                self.works.append([worker, work, data])
+                task.deferLater(reactor, ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000), self.sendStoreWork)
+            else:
+                # print "######### store jobs as of now .. so enqueign"
+                self.works.append([worker, work, data])
         else:
             self.sendWork(worker, work, data)
+        self.mutex.release()
             
     # send no work message
     def noWork(self, worker):
@@ -90,6 +102,17 @@ class TransportMasterProtocol(LineReceiver):
         metadata = work.tostr()
         self.sendLine(worker + ":WORK:" + metadata)
     
+    def sendStoreWork(self):
+        self.mutex.acquire()
+        # print "Store work fired"
+        worker, work, data = self.works.pop(0)
+        self.sendWork(worker, work, data)
+        if self.works:
+            worker, work, data = self.works[0]
+            # print ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000)
+            task.deferLater(reactor, ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000), self.sendStoreWork)
+        self.mutex.release()
+        
     def sendData(self, data):
         self.setRawMode()
         length = len(data)
@@ -251,7 +274,7 @@ class TransportMasterFactory(protocol.Factory):
                 data = open(directory + chunk.name).read()
                 work = Work(chunk.uuid, "STORE", chunk.name, None)
                 work.size = chunk.size
-                log.msg(work)
+                # log.msg(work)
                 return work, None
         # no work: check if mission is complete
         if self.isStoreMissionComplete():
@@ -383,7 +406,8 @@ class TransportMasterFactory(protocol.Factory):
         # send the metadata
         self.fileMap[self.metadata.filename] = self.metadata
         # self.sendMetadata(self.metadata)
-        # self.metadata.save(self.metadir)
+        # save metadata
+        self.metadata.save(self.metadir)
         time.sleep(CHUNK_WRITE_TIME)
         task.deferLater(reactor, 1, self.getMission)
 

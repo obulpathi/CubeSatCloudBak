@@ -149,16 +149,14 @@ class TransportWorkerProtocol(LineReceiver):
             self.sendLine("WORK:" + self.address + ":")
     
     def noWork(self):
-        log.msg("No work")
+        # log.msg("No work")
         task.deferLater(reactor, 1.0, self.getWork)
     
     def gotWork(self, work):
         # print("Worker got work")
-        if self.address == "5":
-            print "#########################################################"
-            print work
         if work.job == "STORE":
-            task.deferLater(reactor, ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000), self.store, work)
+            self.store(work)
+            # task.deferLater(reactor, ((C2C_CHUNK_COMMUNICATION_TIME * work.size) / 1000), self.store, work)
         elif work.job == "PROCESS":
             # simulate chunk read
             task.deferLater(reactor, (CHUNK_READ_TIME + CHUNK_WRITE_TIME), self.process, work)
