@@ -15,9 +15,9 @@
 #
 TC=/sbin/tc
 IF=eth0		    # Interface 
-DNLD=1mbit          # DOWNLOAD Limit
-UPLD=1mbit          # UPLOAD Limit 
-IP=10.227.80.70     # Host IP
+DNLD=9600bit          # DOWNLOAD Limit
+UPLD=9600bit          # UPLOAD Limit 
+IP=192.168.10.2     # Host IP
 U32="$TC filter add dev $IF protocol ip parent 1:0 prio 1 u32"
  
 start() {
