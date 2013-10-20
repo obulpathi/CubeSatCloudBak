@@ -111,8 +111,8 @@ def splitImageAndCode(filename, directory):
 def uncodeAndStich(metadata, filename):
     # check if the target file exists
     if os.path.isfile(filename):
-        print("Error: File : %s already exists" % filename)
-        exit(1)
+        # print("Error: File : %s already exists" % filename)
+        pass
     image = open(filename, "w")
     directory = "data/server/"
     prefix = "image/"

@@ -109,6 +109,7 @@ class TransportMasterFactory(protocol.Factory):
         self.registrationCount = 0
         self.homedir = os.path.expanduser(homedir)
         self.metadir = self.homedir + "metadata/"
+        self.mutex = Lock()
         self.fileMap = {}
         self.metadata = {}
         try:
@@ -136,7 +137,7 @@ class TransportMasterFactory(protocol.Factory):
                 mission.output = fields[4]
             self.gotMission(mission)
         else:
-            log.msg("Received unknown packet from Master Client: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            log.msg("Received unknown packet from Master Client")
             log.msg(packet)
 
     def sendData(self, data):
@@ -239,22 +240,26 @@ class TransportMasterFactory(protocol.Factory):
             self.workers[worker].transport.sendWork(work, data)
         
     def getWork(self, worker, oldWork = None):
+        self.mutex.acquire()
+        work = None
+        data = None
         # log.msg("Work requested by worker")
         if oldWork:
             self.finishedWork(oldWork, worker)
         if not self.mission:
-            return None, None
-        if self.mission.operation == SENSE:
-            return None, None
+            pass
+        elif self.mission.operation == SENSE:
+            pass
         elif self.mission.operation == STORE:
-            return self.getStoreWork(worker)
+            work, data = self.getStoreWork(worker)
         elif self.mission.operation == PROCESS:
-            return self.getProcessWork(worker)
+            work, data = self.getProcessWork(worker)
         elif self.mission.operation == DOWNLINK:
-            return self.getDownlinkWork(worker)
+            work, data = self.getDownlinkWork(worker)
         else:
             log.msg("ERROR: Unknown mission: %s" % mission)
-            return None, None
+        self.mutex.release()
+        return work, data
     
     def getStoreWork(self, worker):
         log.msg("Store work requested by worker")

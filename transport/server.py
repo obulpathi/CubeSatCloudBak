@@ -1,4 +1,5 @@
 import os
+import time
 import math
 import pickle
 from time import sleep
@@ -151,6 +152,7 @@ class TransportServerFactory(protocol.Factory):
         self.homedir = os.path.expanduser(homedir)
         self.fileMap = {}
         self.mutex = Lock()
+        self.start = time.time()
         try:
             os.mkdir(self.homedir)
             os.mkdir(self.homedir + "metadata/")
@@ -216,6 +218,9 @@ class TransportServerFactory(protocol.Factory):
             print(line)
                 
     def sendMission(self):
+        missionTime = time.time() - self.start
+        print "time: ", missionTime
+        self.start = time.time()
         mission = None
         if not self.missions:
             return None
