@@ -6,21 +6,21 @@ commands:
     - {operation: DOWNLINK, filename: image.jpg}
 
 server:
-    address: localhost
+    address: 192.168.10.2
     port: 4000
     ssport: 8004
     homedir: ~/cloud/data/server/
 
 groundstation:
-    address: localhost
+    address: 192.168.10.2
     port: 4004
 
 master:
-    address: localhost
+    address: 192.168.10.3
     port: 8000
     homedir: ~/cloud/data/master/
     
 worker:
-    address: localhost
+    address: 192.168.10.4
     port: 8008
     homedir: ~/cloud/data/
