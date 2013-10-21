@@ -31,7 +31,7 @@ class TransportMasterClientProtocol(LineReceiver):
         self.sendLine(packet)
 
     def connectionMade(self):
-        task.deferLater(reactor, 2, self.register)
+        task.deferLater(reactor, 60, self.register)
     
     # received a packet
     def packetReceived(self, packet):
