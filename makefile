@@ -2,6 +2,18 @@ all:
 	rm -rf ~/cloud/data/*
 	python simulator.py 5
 
+server:
+	rm -rf ~/cloud/data/*
+	python server.py 5
+
+master:
+	rm -rf ~/cloud/data/*
+	python master.py
+
+worker:
+	rm -rf ~/cloud/data/*
+	python worker.py
+
 torrent:
 	echo "execute torrent mission"
 
