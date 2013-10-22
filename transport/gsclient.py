@@ -15,7 +15,7 @@ from cloud.transport.transport import MyTransport
 class TransportGSClientProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
-        self.address = "GroundStation"
+        self.name = "GroundStation"
         self.metadata = None
         self.mode = "LINE"
         self.work = None
@@ -61,9 +61,9 @@ class TransportGSClientProtocol(LineReceiver):
     # received a packet
     def packetReceived(self, packet):
         log.msg(packet)
-        if self.address == "GroundStation" and packet.flags == REGISTERED:
+        if self.name == "GroundStation" and packet.flags == REGISTERED:
             self.registered(packet)
-        elif packet.destination != self.address:
+        elif packet.destination != self.name:
             self.uplinkToCubeSat(pickle.dumps(packet))
         else:
             log.msg("Server said: %s " % packet)
@@ -76,13 +76,13 @@ class TransportGSClientProtocol(LineReceiver):
             self.transport.write(packetstring[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
                 
     def register(self):
-        packet = Packet(self.address, "Server", self.address, "Server", REGISTER, None, HEADERS_SIZE)
+        packet = Packet(self.name, "Server", self.name, "Server", REGISTER, None, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         self.sendPacket(packetstring)
         log.msg(packet)
         
     def registered(self, packet):
-        self.address = packet.payload
+        self.name = packet.payload
         self.status = REGISTERED
         
     def deregister(self):

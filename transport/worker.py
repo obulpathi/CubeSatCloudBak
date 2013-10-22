@@ -15,13 +15,12 @@ from threading import Lock
 
 from cloud import utils
 from cloud.common import *
-from cloud.transport.transport import MyTransport
 
 class TransportWorkerProtocol(LineReceiver):
     def __init__(self, factory, homedir):
         self.factory = factory
         self.homedir = os.path.expanduser(homedir)
-        self.address = str(self.factory.address)
+        self.name = str(self.factory.name)
         #self.MAX_LENGTH = 64000
         self.cswaiter = WaitForData(self.factory.fromCSServerToWorker, self.getData)
         self.ccwaiter = WaitForData(self.factory.fromCSClientToWorker, self.getReply)
@@ -33,7 +32,6 @@ class TransportWorkerProtocol(LineReceiver):
         self.fragmentsLength = 0
         self.packetLength = 0
         self.work = None
-        self.mytransport = MyTransport(self, "Worker")
 
     def getData(self, data):
         # strip off the length header
@@ -57,7 +55,11 @@ class TransportWorkerProtocol(LineReceiver):
     def lineReceived(self, line):
         fields = line.split(":")
         command = fields[0]
-        if command == "REGISTERED":
+        if command == "DUMMY":
+            pass
+        elif command == "GET_MISSION":
+            self.factory.fromWorkerToCSClient.put(line)
+        elif command == "REGISTERED":
             self.registered(fields[1])
         elif command == "NO_WORK":
             self.noWork()
@@ -98,11 +100,11 @@ class TransportWorkerProtocol(LineReceiver):
         # acquire the mutex
         self.mutexpr.acquire()
         log.msg(packet)
-        if self.address == "Worker" and packet.flags == REGISTERED:
+        if self.name == "Worker" and packet.flags == REGISTERED:
             self.registered(packet)
         elif packet.destination == "Server":
             self.forwardToServer(packetstring)
-        elif packet.destination != self.address:
+        elif packet.destination != self.name:
             self.forwardToChild(packet)
         elif packet.flags == "NO_WORK":
             self.noWork()
@@ -126,11 +128,11 @@ class TransportWorkerProtocol(LineReceiver):
         self.mutexsp.release()
     
     def register(self):
-        self.sendLine("REGISTER:" + self.address)
+        self.sendLine("REGISTER:" + self.name)
         
-    def registered(self, address):
-        self.address = address
-        self.homedir = self.homedir + str(self.address) + "/"
+    def registered(self, name):
+        self.name = name
+        self.homedir = self.homedir + str(self.name) + "/"
         try:
             os.mkdir(self.homedir)
         except OSError:
@@ -147,16 +149,16 @@ class TransportWorkerProtocol(LineReceiver):
     def getWork(self, work = None):
         # print("Worker requesting work")
         if work:
-            self.sendLine("WORK:" + self.address + ":" + work.tostr())
+            self.sendLine("WORK:" + self.name + ":" + work.tostr())
         else:
-            self.sendLine("WORK:" + self.address + ":")
+            self.sendLine("WORK:" + self.name + ":")
     
     def noWork(self):
         log.msg("No work")
         task.deferLater(reactor, 1.0, self.getWork)
     
     def gotWork(self, work):
-        # print("Worker got work")
+        log.msg("Worker got work")
         if work.job == "STORE":
             self.store(work)
         elif work.job == "PROCESS":
@@ -211,8 +213,8 @@ class TransportWorkerProtocol(LineReceiver):
 
             
 class TransportWorkerFactory(protocol.ClientFactory):
-    def __init__(self, address, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
-        self.address = address
+    def __init__(self, name, homedir, fromWorkerToCSClient, fromCSClientToWorker, fromWorkerToCSServer, fromCSServerToWorker):
+        self.name = name
         self.homedir = homedir
         self.fromWorkerToCSClient = fromWorkerToCSClient
         self.fromCSClientToWorker = fromCSClientToWorker

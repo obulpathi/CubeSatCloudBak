@@ -10,28 +10,36 @@ from twisted.protocols.basic import LineReceiver
 
 from cloud.common import *
 from cloud import utils
-from cloud.transport.transport import MyTransport
 
 class TransportMasterClientProtocol(LineReceiver):
     def __init__(self, factory):
+        log.msg("Initializing Transport master Client")
         self.factory = factory
-        self.address = None
+        # self.name = None
         self.waiter = WaitForData(self.factory.fromMasterToMasterClient, self.getData)
         self.waiter.start()
         self.mutexpr = Lock()
         self.mutexsp = Lock()
-        self.MAX_LENGTH = 50000
-        self.mytransport = MyTransport(self, "MClient")
+        # self.MAX_LENGTH = 50000
+        self.setLineMode()
+        # self.mytransport = MyTransport(self, "MClient")
 
     def lineReceived(self, line):
+        log.msg("Master client got a line, sending to Master")
+        log.msg(line)
         self.factory.fromMasterClientToMaster.put(line)
         
     def getData(self, packet):
-        # log.msg(packet)
+        log.msg("Master client got a line, sending to SServer")
+        log.msg(packet)
         self.sendLine(packet)
+        log.msg("Master Client: Sent line to server")
 
     def connectionMade(self):
-        task.deferLater(reactor, 60, self.register)
+        log.msg("transport master client: connection made")
+        #self.sendLine("#################################################################")
+        self.register()
+        # task.deferLater(reactor, 10, self.register)
     
     # received a packet
     def packetReceived(self, packet):
@@ -54,7 +62,7 @@ class TransportMasterClientProtocol(LineReceiver):
         
     def registered(self, packet):
         log.msg("Whoa!!!!!")
-        self.address = packet.payload
+        self.name = packet.payload
         self.status = REGISTERED
         
     def deregister(self):
@@ -62,13 +70,16 @@ class TransportMasterClientProtocol(LineReceiver):
         
             
 class TransportMasterClientFactory(protocol.ClientFactory):
+    # protocol = TransportMasterClientProtocol
     def __init__(self, fromMasterToMasterClient, fromMasterClientToMaster):
+        print("Initializing Transport Master Client Factory")
         self.fromMasterToMasterClient = fromMasterToMasterClient
         self.fromMasterClientToMaster = fromMasterClientToMaster
         
     def buildProtocol(self, addr):
+        print("Building Transport Master Client Protocol")
         return TransportMasterClientProtocol(self)
-        
+    
     def clientConnectionFailed(self, connector, reason):
         log.msg("Connection failed.")
         reactor.stop()

@@ -14,7 +14,7 @@ from cloud.common import *
 class TransportCSClientProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
-        self.address = None
+        self.name = None
         self.mode = "LINE"
         self.line = None
         self.work = None
@@ -26,7 +26,7 @@ class TransportCSClientProtocol(LineReceiver):
         self.mutex = Lock()
         self.setLineMode()
 
-    def getData(self, data):
+    def getData(self, data):       
         if self.mode == "LINE":
             # print(data)
             self.line = data
@@ -79,7 +79,7 @@ class TransportCSClientProtocol(LineReceiver):
         self.transport.write(data)
         
     def registered(self, packet):
-        self.address = packet.payload
+        self.name = packet.payload
         self.status = REGISTERED
         
     def deregister(self):

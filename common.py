@@ -205,6 +205,13 @@ class Mission(object):
         if self.operation == "PROCESS":
             strrepr = strrepr + ":" + self.output
         return strrepr
+    def fromstr(self, line):
+        fields = line.split(":")
+        self.operation = fields[0]
+        self.filename = fields[1]
+        self.uuid = fields[2]
+        if self.operation == "PROCESSS":
+            self.output = fields[3]
                 
 class WaitForData(threading.Thread):
     def __init__(self, queue, callback):
@@ -364,3 +371,5 @@ class CCMetadata(object):
                 chunk = CodedChunk(fields[0], fields[1], int(fields[2]))
                 fields = fields[3:]
                 self.chunkMap[worker].append(chunk)
+
+LOREMIPSUM = ":LOREMIPSUM:Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."

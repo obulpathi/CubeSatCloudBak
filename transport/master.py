@@ -1,5 +1,6 @@
 import os
 import math
+import time
 import pickle
 from time import sleep
 from threading import Lock
@@ -22,7 +23,7 @@ class TransportMasterProtocol(LineReceiver):
         #self.MAX_LENGTH = 64000
         self.mutexpr = Lock()
         self.mutexsp = Lock()
-        self.mytransport = MyTransport(self, "Master")
+        # self.mytransport = MyTransport(self, "Master")
     
     # line received
     def lineReceived(self, line):
@@ -84,12 +85,14 @@ class TransportMasterProtocol(LineReceiver):
         
     # send work
     def sendWork(self, work, data):
-        print "Sending work to worker"
-        print work
-        metadata = work.tostr()
+        log.msg("Sending work to worker")
+        metadata = work.tostr() + LOREMIPSUM
+        log.msg(metadata)
         self.sendLine("WORK:" + metadata)
         if work.job == "STORE":
             self.sendData(data)
+        log.msg("Sent work to worker")
+        # self.sendLine("DYMMY")
     
     def sendData(self, data):
         self.setRawMode()
@@ -101,8 +104,8 @@ class TransportMasterProtocol(LineReceiver):
 # Master factory
 class TransportMasterFactory(protocol.Factory):
     def __init__(self, homedir, fromMasterToMasterClient, fromMasterClientToMaster):
-        self.status = "START"
-        self.address = "Master"
+        self.state = "START"
+        self.name = "Master"
         self.mission = None
         self.workers = {}
         self.transports = []
@@ -112,6 +115,8 @@ class TransportMasterFactory(protocol.Factory):
         self.mutex = Lock()
         self.fileMap = {}
         self.metadata = {}
+        self.missions = ["SENSE:image.jpg:1:latitude:longitude", "STORE:image.jpg:2:", "DOWNLINK:image.jpg:3:"]
+    
         try:
             os.mkdir(self.homedir)
             os.mkdir(self.metadir)
@@ -121,9 +126,10 @@ class TransportMasterFactory(protocol.Factory):
         self.fromMasterClientToMaster = fromMasterClientToMaster
         self.waiter = WaitForData(self.fromMasterClientToMaster, self.getData)
         self.waiter.start()
+        self.startTime = time.time()
 
     def getData(self, packet):
-        log.msg(packet)
+        log.msg("Master got line: %s" % packet)
         fields = packet.split(":")
         command = fields[0]
         if command == "REGISTER":
@@ -141,6 +147,7 @@ class TransportMasterFactory(protocol.Factory):
             log.msg(packet)
 
     def sendData(self, data):
+        log.msg("Master sending line to MasterClient: %s" % data)
         self.fromMasterToMasterClient.put(data)
     
     def sendMetadata(self, metadata):
@@ -160,11 +167,18 @@ class TransportMasterFactory(protocol.Factory):
     def registerWorker(self, worker, transport):
         self.workers[worker] = WorkerState(worker, transport)
         log.msg("Registered worker: " + worker)
-        self.status = REGISTERED
                 
     def getMission(self):
-        data = "GET_MISSION"
+        mission = None
+        if self.missions:
+            log.msg("Operation time: %s" % str(time.time() - self.startTime))
+            mission = Mission()
+            mission.fromstr(self.missions.pop(0))
+        task.deferLater(reactor, 1, self.gotMission, mission)
+        """
+        data = "GET_MISSION:NONE" + LOREMIPSUM
         self.fromMasterToMasterClient.put(data)
+        """
 
     def gotMission(self, mission):
         if mission:
@@ -266,7 +280,7 @@ class TransportMasterFactory(protocol.Factory):
         directory = self.metadata.directory
         chunkMap = self.metadata.chunkMap
         chunks = chunkMap.get(worker, [])
-        print len(chunks)
+        # print len(chunks)
         for chunk in chunks:
             if chunk.status == "UNASSIGNED":
                 chunk.status = "ASSIGNED"
@@ -432,6 +446,7 @@ class TransportMasterFactory(protocol.Factory):
     # send a notification that current mission is complete and fetch next    
     def missionComplete(self, mission):
         print("MISSION COMPLETE")
-        self.sendData("GET_MISSION:")
+        self.getMission()
+        #self.sendData("GET_MISSION:")
         #self.sendData("GET_MISSION:" + mission.tostr())
         self.mission = None

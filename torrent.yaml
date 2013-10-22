@@ -8,15 +8,16 @@ commands:
 server:
     address: 192.168.10.2
     port: 4000
-    ssport: 8004
+    ssport: 8005
     homedir: ~/cloud/data/server/
 
 groundstation:
     address: 192.168.10.2
+    address: localhost
     port: 4004
 
 master:
-    address: 192.168.10.3
+    address: 192.168.10.2
     port: 8000
     homedir: ~/cloud/data/master/
     

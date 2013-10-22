@@ -98,7 +98,7 @@ class TransportServerProtocol(LineReceiver):
     def registerGroundStation(self, packet):
         log.msg("Registered ground station")
         self.factory.registrationCount = self.factory.registrationCount + 1
-        packet = Packet(self.factory.address, "receiver", self.factory.address, self.factory.registrationCount, \
+        packet = Packet(self.factory.name, "receiver", self.factory.name, self.factory.registrationCount, \
 						REGISTERED, self.factory.registrationCount, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         log.msg(packet)
@@ -112,7 +112,7 @@ class TransportServerProtocol(LineReceiver):
     # register CubeSat
     def registerCubeSat(self, packet):
         log.msg("Registering CubeSat")
-        new_packet = Packet(self.factory.address, packet.sender, self.factory.address, packet.source, \
+        new_packet = Packet(self.factory.name, packet.sender, self.factory.name, packet.source, \
                             REGISTERED, None, HEADERS_SIZE)
         packetstring = pickle.dumps(new_packet)
         log.msg(new_packet)
@@ -130,8 +130,8 @@ class TransportServerProtocol(LineReceiver):
 
     def finishedMission(self, mission):
         mission = self.factory.finishedMission(mission)
-        packet = Packet(self.factory.address, "Receiver",
-                        self.factory.address, "Master",
+        packet = Packet(self.factory.name, "Receiver",
+                        self.factory.name, "Master",
                         MISSION, mission, HEADERS_SIZE)
         packetstring = pickle.dumps(packet)
         log.msg(packet)
@@ -146,7 +146,7 @@ class TransportServerProtocol(LineReceiver):
 # Server factory
 class TransportServerFactory(protocol.Factory):
     def __init__(self, commands, homedir, fromSServerToServer, fromServerToSServer):
-        self.address = "Server"
+        self.name = "Server"
         self.buildMissions(commands)
         self.registrationCount = 100
         self.homedir = os.path.expanduser(homedir)
@@ -228,7 +228,7 @@ class TransportServerFactory(protocol.Factory):
             mission = self.missions[0]
             self.missions = self.missions[1:]
             log.msg("Sending mission: %s" % mission)
-            packet = "MISSION:" + mission.tostr()
+            packet = "MISSION:" + mission.tostr() + LOREMIPSUM
             self.fromServerToSServer.put(packet)
         else:
             self.fromServerToSServer.put("MISSION:") 
