@@ -28,6 +28,7 @@ class TransportMasterProtocol(LineReceiver):
     
     # line received
     def lineReceived(self, line):
+        log.msg("line received")
         fields = line.split(":")
         command = fields[0]
         if command == "REGISTER":
@@ -92,7 +93,7 @@ class TransportMasterProtocol(LineReceiver):
         log.msg("finished serilization")
         log.msg(metadata)
         log.msg("sending line")
-        self.sendLine("WORK:" + metadata)
+        self.sendLine("WORK:" + metadata + LOREMIPSUM)
         log.msg("sending data")
         if work.job == "STORE":
             self.sendData(data)
@@ -330,8 +331,7 @@ class TransportMasterFactory(protocol.Factory):
                 log.msg(work)
                 return work, None
         # no work: check if mission is complete
-        if self.isDownlinkMissionComplete():
-            self.downlinkMissionComplete(self.mission)
+        task.deferLater(reactor, 0.15, self.isDownlinkMissionComplete)
         return  None, None
         
     def finishedWork(self, work, worker):
@@ -413,6 +413,7 @@ class TransportMasterFactory(protocol.Factory):
             for chunk in chunks:
                 if chunk.status != "FINISHED":
                     return False
+        self.downlinkMissionComplete(self.mission)
         return True
 
     def senseMissionComplete(self, mission):
