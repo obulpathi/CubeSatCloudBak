@@ -6,6 +6,7 @@ NOTES
 TODO
 data.jpg
 image.jpg
+makefile.bak
 data/*
 image/*
 test/pickle/metadata
