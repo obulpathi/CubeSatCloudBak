@@ -91,7 +91,10 @@ def splitImageAndCode(filename, directory):
     size = len(data)
     image.close()
     prefix = filename.split(".")[0] + "/"
-    # create data subdirectory for this file
+    # create data subdirectory, if it does not exist
+    if os.path.isdir(directory + prefix):
+        print("Error: Directory %s already exists" % directory + prefix)
+        exit(1)
     os.mkdir(directory + prefix)
     for count in range(int(math.ceil(float(size)/CHUNK_SIZE))):
         chunkdata = data[count*CHUNK_SIZE: (count+1)*CHUNK_SIZE]
@@ -111,7 +114,7 @@ def splitImageAndCode(filename, directory):
 def uncodeAndStich(metadata, filename):
     # check if the target file exists
     if os.path.isfile(filename):
-        # print("Error: File : %s already exists" % filename)
+        print("Error: File : %s already exists" % filename)
         pass
     image = open(filename, "w")
     directory = "data/server/"

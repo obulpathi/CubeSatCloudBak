@@ -53,7 +53,7 @@ class TransportCSClientProtocol(LineReceiver):
 
     def sendChunk(self, line, data):
         self.mutex.acquire()
-        self.sendLine(line)
+        self.sendLine(line + LOREMIPSUM)
         self.setRawMode()
         length = len(data)
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):

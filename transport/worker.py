@@ -147,9 +147,13 @@ class TransportWorkerProtocol(LineReceiver):
         self.transport.loseConnection()
 
     def getWork(self, work = None):
-        # print("Worker requesting work")
+        print("Worker requesting work")
         if work:
-            self.sendLine("WORK:" + self.name + ":" + work.tostr())
+            log.msg("Finished work")
+            workstr = work.tostr()
+            log.msg(workstr)
+            self.sendLine("WORK:" + self.name + ":" + workstr + LOREMIPSUM)
+            log.msg("sent request for work")
         else:
             self.sendLine("WORK:" + self.name + ":")
     
@@ -201,7 +205,7 @@ class TransportWorkerProtocol(LineReceiver):
         metadata = "CHUNK:" + work.tostr()
         self.forwardToServer(metadata, data)
         self.work = work
-        # wait for downlink ack to call getWork
+        print("wait for downlink ack to call getWork")
                    
     def forwardToServer(self, metadata, data):
         print "worker: forwarded to csclient"

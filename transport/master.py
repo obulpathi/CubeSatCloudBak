@@ -223,14 +223,17 @@ class TransportMasterFactory(protocol.Factory):
     
     # store the given image on cdfs
     def store(self, mission):
-        log.msg("Executing storing mission: ")
+        log.msg("Executing storing mission")
         # split the image into chunks
         self.chunks, self.metadata = utils.splitImageAndCode(mission.filename, self.homedir)
+        log.msg("Created chunks")
         # self.chunks, self.metadata = utils.splitImageIntoChunks(mission.filename, self.homedir)
         # assign work to workers, using Uniform Load balancer
         utils.uniformLoadBalancer(self.workers, self.chunks, self.metadata)
+        log.msg("performed load balancing")
         # mission is ready to be executed
         self.mission = mission
+        log.msg("starting storing operation")
         self.startStoreOperation()
 
     # process the given file and downlink

@@ -59,7 +59,8 @@ class TransportGSServerProtocol(LineReceiver):
         if self.fragmentsLength == self.packetLength:
             self.mode = "LINE"
             self.setLineMode()
-            self.sendLine("OK:Ground Station server received data and acked Ground Station server received data and acked")
+            log.msg("uplinking ack")
+            self.sendLine("OK:Ground Station server received data and acked Ground Station server received data and acked" + LOREMIPSUM)
             # log.msg("GS Server: received data and acked")
         elif self.fragmentsLength > self.packetLength:
             utils.banner("ERROR: self.fragmentsLength > self.packetLength")
