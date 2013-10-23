@@ -150,10 +150,10 @@ class TransportWorkerProtocol(LineReceiver):
         print("Worker requesting work")
         if work:
             log.msg("Finished work")
-            workstr = work.tostr()
+            workstr = "WORK:" + self.name + ":" + work.tostr() + LONGLOREMIPSUM
             log.msg(workstr)
-            self.sendLine("WORK:" + self.name + ":" + workstr + LOREMIPSUM)
-            log.msg("sent request for work")
+            self.sendLine(workstr)
+            log.msg("sent request work")
         else:
             self.sendLine("WORK:" + self.name + ":")
     
