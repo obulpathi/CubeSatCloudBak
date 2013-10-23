@@ -20,21 +20,6 @@ from cloud.transport.worker import *
 from cloud.transport.csserver import *
 from cloud.transport.csclient import *
 
-class MasterThread(threading.Thread):
-    def __init__(self, config):
-        self.config = config.master
-        self.sconfig = config.server
-        self.fromMasterToMasterClient = Queue.Queue()
-        self.fromMasterClientToMaster = Queue.Queue()
-        threading.Thread.__init__(self)
-
-    def run(self):
-        reactor.connectTCP(self.sconfig.address, self.sconfig.ssport, 
-                        TransportMasterClientFactory(self.fromMasterToMasterClient, self.fromMasterClientToMaster))
-        reactor.listenTCP(self.config.port,
-                        TransportMasterFactory(self.config.homedir,
-                                                self.fromMasterToMasterClient, self.fromMasterClientToMaster))
-
 class WorkerThread(threading.Thread):
     def __init__(self, mconfig, gsconfig, worker):
         self.mconfig  = mconfig
@@ -55,37 +40,6 @@ class WorkerThread(threading.Thread):
                             TransportCSClientFactory(self.fromWorkerToCSClient, self.fromCSClientToWorker))
         reactor.listenTCP(self.worker.port, 
                             TransportCSServerFactory(self.fromWorkerToCSServer, self.fromCSServerToWorker))
-
-class GroundStationThread(threading.Thread):
-    def __init__(self, sconfig, config):
-        self.config = config
-        self.sconfig = sconfig
-        self.fromGSClientToGSServer = Queue.Queue()
-        self.fromGSServerToGSClient = Queue.Queue()
-        threading.Thread.__init__(self)
-
-    def run(self):
-        reactor.connectTCP(self.sconfig.address, self.sconfig.port, 
-                            TransportGSClientFactory(self.fromGSClientToGSServer, self.fromGSServerToGSClient))
-        print(self.config.port)
-        reactor.listenTCP(self.config.port, TransportGSServerFactory(self.fromGSClientToGSServer, self.fromGSServerToGSClient))
-
-class ServerThread(threading.Thread):
-    def __init__(self, config, commands):
-        self.port = config.port
-        self.ssport = config.ssport
-        self.homedir = config.homedir
-        self.commands = commands
-        self.fromSServerToServer = Queue.Queue()
-        self.fromServerToSServer = Queue.Queue()
-        threading.Thread.__init__(self)
-
-    def run(self):
-        reactor.listenTCP(self.ssport, 
-                            TransportSServerFactory(self.fromSServerToServer, self.fromServerToSServer))
-        reactor.listenTCP(self.port, 
-                            TransportServerFactory(self.commands, self.homedir, 
-                                                    self.fromSServerToServer, self.fromServerToSServer))
 
         
 if __name__ == "__main__":

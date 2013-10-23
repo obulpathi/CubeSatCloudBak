@@ -27,9 +27,9 @@ class TransportGSServerProtocol(LineReceiver):
         self.sendLine(line)
     
     def lineReceived(self, line):
-        self.mutex.acquire()
-        self.setRawMode()
-        # print("GS Server line received")
+        print("GS Server line received")
+        #self.mutex.acquire()
+        self.setRawMode()    
         fields = line.split(":")
         self.work = Work(fields[1], fields[2], fields[3], None)
         self.work.size = fields[4]
@@ -38,10 +38,11 @@ class TransportGSServerProtocol(LineReceiver):
         self.fragmentsLength = 0
         self.factory.fromGSServerToGSClient.put(line)
         self.mode = "RAW"
-        self.mutex.release() 
+        #self.mutex.release() 
 
     def rawDataReceived(self, data):
-        self.mutex.acquire()
+        print("GS Server data received")
+        #self.mutex.acquire()
         # log.msg("GS Server: received data")
         self.factory.fromGSServerToGSClient.put(data)
         # buffer the the fragments
@@ -64,7 +65,7 @@ class TransportGSServerProtocol(LineReceiver):
             utils.banner("ERROR: self.fragmentsLength > self.packetLength")
         else:
             log.msg("GS server: waiting for more fragmetns")
-        self.mutex.release()
+        #self.mutex.release()
         
 class TransportGSServerFactory(protocol.Factory):
     def __init__(self, fromGSClientToGSServer, fromGSServerToGSClient):

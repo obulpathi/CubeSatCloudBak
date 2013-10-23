@@ -22,6 +22,6 @@ master:
     homedir: ~/cloud/data/master/
     
 worker:
-    address: 1
+    address: 0
     port: 8008
     homedir: ~/cloud/data/

@@ -78,17 +78,36 @@ if __name__ == "__main__":
     # create interprocessing queues
     fromMasterToMasterClient = Queue.Queue()
     fromMasterClientToMaster = Queue.Queue()
-    
+    fromWorkerToCSClient = Queue.Queue()
+    fromCSClientToWorker = Queue.Queue()
+    fromWorkerToCSServer = Queue.Queue()
+    fromCSServerToWorker = Queue.Queue()
+                                                
     # create and start master
     #masterThread = MasterThread(config, fromMasterToMasterClient, fromMasterClientToMaster)
     #masterThread.start()
     #masterClientThread = MasterClientThread(config, fromMasterToMasterClient, fromMasterClientToMaster)
     #masterClientThread.start()
-    reactor.connectTCP(config.server.address, config.server.ssport, 
-                        TransportMasterClientFactory(fromMasterToMasterClient, fromMasterClientToMaster))
+    #reactor.connectTCP(config.server.address, config.server.ssport, 
+    #                    TransportMasterClientFactory(fromMasterToMasterClient, fromMasterClientToMaster))
+    mconfig = config.master
+    wconfig = config.worker
+    gsconfig = config.groundstation
+    
     reactor.listenTCP(config.master.port,
                         TransportMasterFactory(config.master.homedir,
                                                 fromMasterToMasterClient, fromMasterClientToMaster))
+    # sleep(5)
+    # run the worker
+    reactor.connectTCP(mconfig.address, mconfig.port,
+                        TransportWorkerFactory(wconfig.address, wconfig.homedir,
+                                                fromWorkerToCSClient, fromCSClientToWorker,
+                                                fromWorkerToCSServer, fromCSServerToWorker))
+    # sleep(5)
+    reactor.connectTCP(gsconfig.address, gsconfig.port, 
+                        TransportCSClientFactory(fromWorkerToCSClient, fromCSClientToWorker))
+    #reactor.listenTCP(self.worker.port, 
+    #                    TransportCSServerFactory(self.fromWorkerToCSServer, self.fromCSServerToWorker))
     reactor.run()
     print("##############################")
     # wait for reactor and all threads to finish

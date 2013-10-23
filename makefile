@@ -4,13 +4,14 @@ all:
 
 server:
 	rm -rf ~/cloud/data/*
-	python newServer.py
+	python server.py
 
 sserver:
 	python sserver.py
 	
 master:
-	python newMaster.py
+	rm -rf ~/cloud/data/master/*
+	python master.py
 
 mclient:
 	python mclient.py

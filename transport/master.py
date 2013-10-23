@@ -23,6 +23,7 @@ class TransportMasterProtocol(LineReceiver):
         #self.MAX_LENGTH = 64000
         self.mutexpr = Lock()
         self.mutexsp = Lock()
+        self.setLineMode()
         # self.mytransport = MyTransport(self, "Master")
     
     # line received
@@ -86,9 +87,13 @@ class TransportMasterProtocol(LineReceiver):
     # send work
     def sendWork(self, work, data):
         log.msg("Sending work to worker")
-        metadata = work.tostr() + LOREMIPSUM
+        metadata = work.tostr()
+        # + LOREMIPSUM
+        log.msg("finished serilization")
         log.msg(metadata)
+        log.msg("sending line")
         self.sendLine("WORK:" + metadata)
+        log.msg("sending data")
         if work.job == "STORE":
             self.sendData(data)
         log.msg("Sent work to worker")
@@ -167,6 +172,7 @@ class TransportMasterFactory(protocol.Factory):
     def registerWorker(self, worker, transport):
         self.workers[worker] = WorkerState(worker, transport)
         log.msg("Registered worker: " + worker)
+        task.deferLater(reactor, 1, self.getMission)
                 
     def getMission(self):
         mission = None
@@ -289,6 +295,7 @@ class TransportMasterFactory(protocol.Factory):
                 work = Work(chunk.uuid, "STORE", chunk.name, None)
                 work.size = chunk.size
                 log.msg(work)
+                print "returning work to worker"
                 return work, data
         # no work: set a callback to check if mission is complete and return
         task.deferLater(reactor, 0.15, self.isMissionComplete)

@@ -23,7 +23,7 @@ MAX_PACKET_SIZE = 10000
 
 # chunk constants
 # CHUNK_SIZE = 65536
-CHUNK_SIZE = 1000
+CHUNK_SIZE = 5000
 
 # commands
 ACK = "ACK"
@@ -65,8 +65,8 @@ CS2GSLink = Link(9600, MB, 5, 64)
 CS2CSLink = Link(MBPS, MB, 2, 64)
 
 # chunk sizes
-chunk_x = 100
-chunk_y = 100
+chunk_x = 200
+chunk_y = 200
 
 Box = namedtuple('Box', 'left top right bottom')
 
@@ -83,11 +83,13 @@ class Work(object):
         self.job = job
         self.filename = filename
         self.payload = payload
+        
     def __repr__(self):
         strrepr =  "uuid: " + str(self.uuid) + ", job: " + self.job + ", filename: " + self.filename
         if self.job == "STORE":
             strrepr = strrepr + ", size: " + str(self.size)
         return strrepr
+        
     def tostr(self):
         strrepr = str(self.uuid) + ":" + self.job + ":" + self.filename
         if self.payload:
@@ -95,6 +97,7 @@ class Work(object):
         if self.job == "STORE":
             strrepr = strrepr + ":" + str(self.size)
         return strrepr
+        
     def fromstr(self, initstr):
         fields = initstr.split(":")
         self.uuid = fields[0]
