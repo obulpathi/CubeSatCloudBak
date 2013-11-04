@@ -41,7 +41,10 @@ class TransportMasterProtocol(LineReceiver):
                 self.getWork(fields[1], None)
         else:
             print "Garbage: ", line
-                                    
+            
+    def lineLengthExceeded(self, line):
+        log.msg("################################################")
+                                       
     # received a packet
     def packetReceived(self, packet):
         self.mutexpr.acquire()
@@ -84,9 +87,42 @@ class TransportMasterProtocol(LineReceiver):
     # send no work message
     def noWork(self, destination):
         self.sendLine("NO_WORK")
+    
+    def sendWork(self, chunks, data):
+        print chunks
+        print "###############################"
+        metadata = ""
+        print len(chunks)
+        print chunks
+        for chunk in chunks:
+            print chunk
+            # metadata = metadata + "!"
+            metadata = metadata + ":" + chunk.name + ":" + chunk.size
+        print "stiched metadata"
+        data = None
+        for chunk in chunks:
+            print "chunk"
+            fragment = open("~/cloud/data/master/" + chunk.name).read()
+            if not data:
+                data = fragment
+            else:
+                data = data + fragment
+        print "stiched data"
+        metadata = str(len(data)) + ":"
+        print "sending line"
+        self.sendLine(metadata)
+        print "sending data"
+        self.sendData(data)
+        print "sent data"
         
+    def sendData(self, data):
+        self.setRawMode()
+        length = len(data)
+        for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
+            self.transport.write(data[i*MAX_PACKET_SIZE:(i+1)*MAX_PACKET_SIZE])
+                 
     # send work
-    def sendWork(self, work, data):
+    def sendWorkOld(self, work, data):
         log.msg("Sending work to worker")
         metadata = work.tostr()
         # + LOREMIPSUM
@@ -100,7 +136,7 @@ class TransportMasterProtocol(LineReceiver):
         log.msg("Sent work to worker")
         # self.sendLine("DYMMY")
     
-    def sendData(self, data):
+    def sendDataOld(self, data):
         self.setRawMode()
         length = len(data)
         for i in range(int(math.ceil(float(length)/MAX_PACKET_SIZE))):
@@ -290,6 +326,14 @@ class TransportMasterFactory(protocol.Factory):
         directory = self.metadata.directory
         chunkMap = self.metadata.chunkMap
         chunks = chunkMap.get(worker, [])
+        metadata = "tmp"
+        for chink in chunks:
+            print chick
+            metadata = metadata + ":" + chink.name + ":" + chick.size
+            print "yey"
+        log.msg("returning the chunks")
+        return metadata, None
+        """
         # print len(chunks)
         for chunk in chunks:
             if chunk.status == "UNASSIGNED":
@@ -304,6 +348,7 @@ class TransportMasterFactory(protocol.Factory):
         # no work: set a callback to check if mission is complete and return
         task.deferLater(reactor, 0.15, self.isMissionComplete)
         return None, None
+        """
 
     def getProcessWork(self, worker):
         # log.msg("Process work requested by worker")

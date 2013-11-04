@@ -33,7 +33,7 @@ bootstrap:
 	mkdir ~/cloud/data/
 
 spacelink:
-	sudo tc qdisc add dev eth0 root netem rate 1mbit delay 1ms 10us distribution normal loss 0.3% 25%
+	sudo tc qdisc add dev eth0 root netem rate 100mbit delay 1ms 100us distribution normal loss 0.3% 25%
 
 groundlink:
 	sudo tc qdisc add dev eth0 root netem rate 9600bit delay 2ms 200us distribution normal loss 0.3% 25%

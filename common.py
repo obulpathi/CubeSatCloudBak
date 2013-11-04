@@ -117,6 +117,9 @@ class Chunk(object):
     def __repr__(self):
         return "Name: " + str(self.name) + ", Size: " + str(self.size) + \
                ", Box: " + str(self.box) + ", Status: " + str(self.status) + ", Worker: " + str(self.worker)
+               
+    def tostr(self):
+        return self.name + ":" + self.size
 
 class CodedChunk(object):
     def __init__(self, uuid, name, size):

@@ -16,3 +16,4 @@ tests/profiling/output/
 tests/profiling/chunks/
 tests/profiling/splits/
 tests/profiling/subchunks/
+tests/twisted/line/client/

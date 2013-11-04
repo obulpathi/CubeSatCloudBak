@@ -67,7 +67,7 @@ class EchoFactory(protocol.ClientFactory):
 # this connects the protocol to a server runing on port 8000
 def main():
     f = EchoFactory()
-    reactor.connectTCP("localhost", 4444, f)
+    reactor.connectTCP("192.168.10.3", 4444, f)
     reactor.run()
 
 # this only runs if the module was *not* imported

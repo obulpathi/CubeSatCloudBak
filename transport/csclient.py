@@ -68,7 +68,7 @@ class TransportCSClientProtocol(LineReceiver):
 
     def lineReceived(self, line):
         log.msg("cs client received ack from gsserver")
-        self.factory.fromCSClientToWorker.put(line)
+        # self.factory.fromCSClientToWorker.put(line)
         
     def dataReceived(self, packetstring):
         self.factory.fromCSClientToWorker.put(packetstring)
